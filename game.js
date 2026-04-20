@@ -19,7 +19,7 @@ function newState() {
     scores:     { player: 0, ai: 0 },
     phase:      'selectCard',        // 'selectCard' | 'aiThink' | 'playerDefend' | 'resolving' | 'gameOver'
     aiCard:     null,
-    history:    ['Game started! YOU have the ball.'],
+    history:    ['Game started! YOU have the biscuit.'],
     winner:     null,
   };
 }
@@ -116,7 +116,7 @@ function resolveRound(offCard, defCard) {
   const pos = moveBall(offCard);
   if (pos.oob) {
     switchPossession();
-    log('⚽ Out of bounds!');
+    log('🍪 Out of bounds!');
     return { type: 'oob' };
   }
   state.ball = pos;
@@ -132,7 +132,7 @@ function afterResolve(result) {
     if (scored) {
       const scorer = state.possession;
       state.scores[scorer]++;
-      log(`⚽ GOAL! (rolled ${roll}, needed >${diff})`);
+      log(`🫕 BAKED! (rolled ${roll}, needed >${diff})`);
 
       if (state.scores[scorer] >= GOALS_TO_WIN) {
         state.winner = scorer;
@@ -144,7 +144,7 @@ function afterResolve(result) {
 
       state.ball = { x: 2, y: 5 };
       switchPossession();
-      log(state.possession === 'player' ? 'YOU have the ball.' : 'AI has the ball.');
+      log(state.possession === 'player' ? 'YOU have the biscuit.' : 'AI has the biscuit.');
     } else {
       log(`❌ Miss! (rolled ${roll}, needed >${diff})`);
       switchPossession();
@@ -228,7 +228,7 @@ function updateGrid() {
         .replace(/\b(has-ball|diff-\w+|no-shot)\b/g, '').trim();
 
       if (state.ball.x === x && state.ball.y === y) {
-        cell.textContent = '⚽';
+        cell.textContent = '🍪';
         cell.classList.add('has-ball');
       } else {
         const diff = cellDifficulty(x, y);
