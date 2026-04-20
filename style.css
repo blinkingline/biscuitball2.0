@@ -287,6 +287,12 @@ html, body {
   border-color: #0e1f10;
 }
 
+.cell.goal-center {
+  font-size: 1rem;
+  background: #0d2212;
+  border-color: #1e4020;
+}
+
 /* ── Log area ────────────────────────────────────────────── */
 
 #log-area {
