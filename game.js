@@ -6,6 +6,7 @@ const GRID_W      = 5;
 const GRID_H      = 11;
 const GOALS_TO_WIN = 5;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯' };
+const COL_PENALTY = [3, 1, 0, 1, 3];
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -38,10 +39,21 @@ function canShoot() {
   return state.possession === 'player' ? state.ball.y < 5 : state.ball.y > 5;
 }
 
-function shotDifficulty(y) {
-  return state.possession === 'player'
+function shotDifficulty() {
+  const { x, y } = state.ball;
+  const base = state.possession === 'player'
     ? Math.round(2 + y * 3.4)
     : Math.round(2 + (10 - y) * 3.4);
+  return base + COL_PENALTY[x];
+}
+
+function cellDifficulty(x, y) {
+  if (state.possession === 'player' && y >= 5) return null;
+  if (state.possession === 'ai'     && y <= 5) return null;
+  const base = state.possession === 'player'
+    ? Math.round(2 + y * 3.4)
+    : Math.round(2 + (10 - y) * 3.4);
+  return base + COL_PENALTY[x];
 }
 
 function moveBall(card) {
@@ -87,7 +99,7 @@ function resolveRound(offCard, defCard) {
       log('🛡️ Shot blocked!');
       return { type: 'blocked' };
     }
-    const diff  = shotDifficulty(state.ball.y);
+    const diff  = shotDifficulty();
     const roll  = Math.floor(Math.random() * 20) + 1;
     const scored = roll > diff;
     return { type: 'shot', roll, diff, scored };
@@ -202,9 +214,9 @@ function buildGrid() {
 }
 
 function diffClass(diff) {
-  if (diff <= 8)  return 'diff-easy';
-  if (diff <= 16) return 'diff-medium';
-  if (diff <= 24) return 'diff-hard';
+  if (diff <= 5)  return 'diff-easy';
+  if (diff <= 10) return 'diff-medium';
+  if (diff <= 15) return 'diff-hard';
   return 'diff-vhard';
 }
 
@@ -213,17 +225,20 @@ function updateGrid() {
     for (let x = 0; x < GRID_W; x++) {
       const cell = $(`c${x}${y}`);
       cell.className = cell.className
-        .replace(/\b(has-ball|diff-\w+)\b/g, '').trim();
+        .replace(/\b(has-ball|diff-\w+|no-shot)\b/g, '').trim();
 
       if (state.ball.x === x && state.ball.y === y) {
         cell.textContent = '⚽';
         cell.classList.add('has-ball');
       } else {
-        const diff = state.possession === 'player'
-          ? Math.round(2 + y * 3.4)
-          : Math.round(2 + (10 - y) * 3.4);
-        cell.textContent = diff;
-        cell.classList.add(diffClass(diff));
+        const diff = cellDifficulty(x, y);
+        if (diff === null) {
+          cell.textContent = '';
+          cell.classList.add('no-shot');
+        } else {
+          cell.textContent = diff;
+          cell.classList.add(diffClass(diff));
+        }
       }
     }
   }

@@ -2,7 +2,6 @@
 
 html, body {
   width: 100%; height: 100%;
-  min-height: 100dvh;
   background: #071a09;
   font-family: 'Segoe UI', Arial, sans-serif;
   color: #e0e0e0;
@@ -18,7 +17,7 @@ html, body {
   display: none;
   width: 100%;
   max-width: 480px;
-  min-height: 100dvh;
+  height: 100dvh;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -139,7 +138,7 @@ html, body {
   border-bottom: 2px solid #142818;
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  padding: 5px 16px;
   flex-shrink: 0;
 }
 
@@ -163,7 +162,7 @@ html, body {
 .team-name.ai  { color: #4488ff; }
 
 .team-score {
-  font-size: 2.6rem;
+  font-size: 2.2rem;
   font-weight: 900;
   line-height: 1;
   color: #6ed44a;
@@ -199,12 +198,13 @@ html, body {
 
 #field-container {
   flex: 1;
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px 0;
+  padding: 4px 0;
   background: #071a09;
   position: relative;
   overflow: hidden;
@@ -238,15 +238,15 @@ html, body {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 2px;
-  padding: 4px;
+  padding: 3px;
   background: #0a1f0c;
   border: 1px solid #142818;
-  width: min(270px, 90vw);
+  width: min(250px, 86vw);
   z-index: 1;
 }
 
 .cell {
-  aspect-ratio: 1.4 / 1;
+  aspect-ratio: 2 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -277,18 +277,23 @@ html, body {
 }
 
 /* difficulty color tiers */
-.cell.diff-easy   { color: rgba(110,212,74,0.6); }
-.cell.diff-medium { color: rgba(245,196,0,0.5); }
-.cell.diff-hard   { color: rgba(255,120,60,0.5); }
-.cell.diff-vhard  { color: rgba(255,80,80,0.4); }
+.cell.diff-easy   { color: rgba(110,212,74,0.7); }
+.cell.diff-medium { color: rgba(245,196,0,0.6); }
+.cell.diff-hard   { color: rgba(255,120,60,0.6); }
+.cell.diff-vhard  { color: rgba(255,80,80,0.5); }
+
+.cell.no-shot {
+  background: #0b1a0d;
+  border-color: #0e1f10;
+}
 
 /* ── Log area ────────────────────────────────────────────── */
 
 #log-area {
   flex-shrink: 0;
   width: 100%;
-  padding: 6px 16px;
-  min-height: 52px;
+  padding: 4px 16px;
+  min-height: 38px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -313,12 +318,11 @@ html, body {
   flex-shrink: 0;
   width: 100%;
   background: #040f05;
-  padding: 12px 16px 20px;
+  padding: 8px 16px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  min-height: 96px;
+  gap: 6px;
 }
 
 .btn-group {
@@ -329,8 +333,8 @@ html, body {
 }
 
 .card-btn, .def-btn {
-  width: 62px;
-  height: 62px;
+  width: 56px;
+  height: 56px;
   background: #0c1f0e;
   border: 2px solid #1e3d18;
   border-radius: 10px;
@@ -342,7 +346,7 @@ html, body {
   gap: 2px;
   transition: all 0.15s;
   color: #e0e0e0;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 }
 
 .card-btn span, .def-btn span {
@@ -437,10 +441,12 @@ html, body {
 
 /* ── Responsive ──────────────────────────────────────────── */
 
-@media (max-height: 640px) {
+@media (max-height: 580px) {
   .title-icon { font-size: 2.4rem; }
   #screen-title h1 { font-size: 2.2rem; }
   .rules-box { padding: 10px 14px; }
-  .card-btn, .def-btn { width: 54px; height: 54px; font-size: 1.3rem; }
-  #controls { padding: 8px 16px 12px; min-height: 80px; }
+  .card-btn, .def-btn { width: 50px; height: 50px; font-size: 1.2rem; }
+  .team-score { font-size: 1.8rem; }
+  #scoreboard { padding: 3px 16px; }
 }
+
