@@ -132,7 +132,7 @@ function afterResolve(result) {
     if (scored) {
       const scorer = state.possession;
       state.scores[scorer]++;
-      log(`🫕 BAKED! (rolled ${roll}, needed >${diff})`);
+      log(`⚽ GOAL! (rolled ${roll}, needed >${diff})`);
 
       if (state.scores[scorer] >= GOALS_TO_WIN) {
         state.winner = scorer;
@@ -228,7 +228,7 @@ function updateGrid() {
         .replace(/\b(has-ball|diff-\w+|no-shot)\b/g, '').trim();
 
       if (state.ball.x === x && state.ball.y === y) {
-        cell.textContent = '🍪';
+        cell.textContent = '⚽';
         cell.classList.add('has-ball');
       } else {
         const diff = cellDifficulty(x, y);
