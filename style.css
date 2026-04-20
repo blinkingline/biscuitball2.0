@@ -295,6 +295,11 @@ html, body {
   z-index: 1;
 }
 
+.goal-net.your-net {
+  display: inline-block;
+  transform: rotate(180deg);
+}
+
 /* ── Log area ────────────────────────────────────────────── */
 
 #log-area {

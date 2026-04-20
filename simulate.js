@@ -1,19 +1,28 @@
 'use strict';
 
-const GRID_W = 5;
-const GRID_H = 11;
-const GOALS_TO_WIN = 3;
-const DIE_SIZE = 12;
-const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Left', 'Right', 'Right', 'Right'];
+// ── Constants (mirrored from game.js) ─────────────────────────────────────
 
-const ROW_DIFFS = [
-  [2, 2, 1, 2, 2],    // Row 0 (Goal)
-  [3, 2, 2, 2, 3],    // Row 1
-  [5, 3, 3, 3, 5],    // Row 2
-  [8, 5, 5, 5, 8],    // Row 3
-  [10, 8, 8, 8, 10],  // Row 4
-  [11, 11, 11, 11, 11] // Row 5 (Midfield)
+const GRID_W       = 5;
+const GRID_H       = 11;
+const GOALS_TO_WIN = 2;
+const DIE_SIZE     = 12;
+const DECK_COMPOSITION = [
+  'Forward', 'Forward', 'Forward', 'Forward', 'Forward',
+  'Left', 'Left', 'Left',
+  'Right', 'Right', 'Right'
 ];
+const ROW_DIFFS = [
+  [2, 1, 1, 1, 2],
+  [3, 2, 2, 2, 3],
+  [5, 3, 2, 3, 5],
+  [7, 5, 4, 5, 7],
+  [9, 7, 6, 7, 9],
+  [11, 11, 12, 11, 11],
+];
+
+const NUM_GAMES = 50000;
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 function shuffle(array) {
   const a = [...array];
@@ -24,70 +33,23 @@ function shuffle(array) {
   return a;
 }
 
-function newState() {
-  return {
-    ball: { x: 2, y: 5 },
-    possession: 'player',
-    scores: { player: 0, ai: 0 },
-    playerHand: [],
-    playerDeck: shuffle(DECK_COMPOSITION),
-    playerDiscard: [],
-    aiHand: [],
-    aiDeck: shuffle(DECK_COMPOSITION),
-    aiDiscard: [],
-    playerCardHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
-    playerDefenseHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
-    aiCardHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
-    aiDefenseHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
-    turns: 0,
-    winner: null
-  };
-}
-
-function drawHand(state, side) {
-  const sideDeck = `${side}Deck`;
-  const sideDiscard = `${side}Discard`;
-  const sideHand = `${side}Hand`;
-  state[sideDiscard].push(...state[sideHand]);
-  state[sideHand] = [];
-  for (let i = 0; i < 3; i++) {
-    if (state[sideDeck].length === 0) {
-      if (state[sideDiscard].length === 0) {
-        state[sideDeck] = shuffle(DECK_COMPOSITION);
-      } else {
-        state[sideDeck] = shuffle(state[sideDiscard]);
-        state[sideDiscard] = [];
-      }
-    }
-    if (state[sideDeck].length > 0) state[sideHand].push(state[sideDeck].pop());
-  }
-}
-
-function canShoot(state) {
-  return state.possession === 'player' ? state.ball.y <= 5 : state.ball.y >= 5;
-}
-
-function getDiff(state, x, y) {
-  const dist = state.possession === 'player' ? y : (10 - y);
-  if (dist < 0 || dist > 5) return null;
-  return ROW_DIFFS[dist][x];
-}
-
-function moveBall(state, card, distance = 1) {
-  let { x, y } = state.ball;
-  if (card === 'Forward') y += state.possession === 'player' ? -distance : distance;
-  else if (card === 'Left') x -= 1;
-  else if (card === 'Right') x += 1;
-  return { x, y, oob: x < 0 || x >= GRID_W || y < 0 || y >= GRID_H };
-}
-
 function rollDie() {
   return Math.floor(Math.random() * DIE_SIZE) + 1;
 }
 
+function getDifficulty(x, y, possession) {
+  const dist = possession === 'player' ? y : (10 - y);
+  if (dist < 0 || dist > 5) return null;
+  return ROW_DIFFS[dist][x];
+}
+
+function canShoot(ball, possession) {
+  return possession === 'player' ? ball.y <= 5 : ball.y >= 5;
+}
+
 function weightedRandom(weights) {
   const entries = Object.entries(weights).filter(([, w]) => w > 0);
-  if (entries.length === 0) return 'Forward';
+  if (entries.length === 0) return null;
   let r = Math.random() * entries.reduce((sum, [, w]) => sum + w, 0);
   for (const [key, w] of entries) {
     r -= w;
@@ -96,110 +58,198 @@ function weightedRandom(weights) {
   return entries[entries.length - 1][0];
 }
 
-function pickMove(state, side, isOffense) {
-  const { x, y } = state.ball;
-  const hand = [...state[`${side}Hand`], isOffense ? 'Shoot' : 'Block'];
-  const opponentSide = side === 'player' ? 'ai' : 'player';
-  const history = isOffense ? state[`${opponentSide}DefenseHistory`] : state[`${opponentSide}CardHistory`];
-  
-  const avoid = card => 1 / ((history[card === 'Block' ? 'Shoot' : card] || 0) + 1);
+function drawHand(deck, discard, hand) {
+  discard.push(...hand);
+  hand.length = 0;
+  for (let i = 0; i < 3; i++) {
+    if (deck.length === 0) {
+      deck.push(...shuffle(discard));
+      discard.length = 0;
+    }
+    if (deck.length > 0) hand.push(deck.pop());
+  }
+}
+
+// ── AI logic ───────────────────────────────────────────────────────────────
+
+function pickOffense(ball, possession, hand, defenseHistory) {
+  const { x, y } = ball;
+  const avoid = card => 1 / ((defenseHistory[card] || 0) + 1);
+
+  if (canShoot(ball, possession)) {
+    const dist = possession === 'player' ? y : (10 - y);
+    const shootProb = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.1) * avoid('Shoot') * 4;
+    if (Math.random() < shootProb) return 'Shoot';
+  }
 
   const weights = {};
-  hand.forEach(card => {
-    if (isOffense) {
-      if (card === 'Shoot') {
-        if (canShoot(state)) {
-          const dist = side === 'player' ? y : (10 - y);
-          weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.1) * avoid('Shoot') * 4;
-        } else weights.Shoot = 0;
-      } else if (card === 'Forward') weights.Forward = avoid('Forward') * 5;
-      else if (card === 'Left') weights.Left = x > 0 ? avoid('Left') * (x >= 3 ? 3 : 2) : 0;
-      else if (card === 'Right') weights.Right = x < 4 ? avoid('Right') * (x <= 1 ? 3 : 2) : 0;
+  for (const card of hand) {
+    if      (card === 'Forward') weights.Forward = avoid('Forward') * 5;
+    else if (card === 'Left')    weights.Left    = x > 0 ? avoid('Left')  * (x >= 3 ? 3 : 2) : 0;
+    else if (card === 'Right')   weights.Right   = x < 4 ? avoid('Right') * (x <= 1 ? 3 : 2) : 0;
+  }
+  return weightedRandom(weights) || 'Forward';
+}
+
+function pickDefense(hand, offenseHistory, ball, possession) {
+  const cards = [...new Set([...hand, 'Shoot'])];
+  const weights = {};
+  for (const card of cards) {
+    weights[card] = (offenseHistory[card] || 0) + 1;
+    if (card === 'Shoot' && !canShoot(ball, possession)) weights[card] = 0;
+  }
+  return weightedRandom(weights) || hand[0];
+}
+
+// ── Simulate one game ──────────────────────────────────────────────────────
+
+function simGame(startingPossession) {
+  const state = {
+    ball: { x: 2, y: 5 },
+    possession: startingPossession,
+    scores: { player: 0, ai: 0 },
+    playerHand: [], playerDeck: shuffle(DECK_COMPOSITION), playerDiscard: [],
+    aiHand:     [], aiDeck:     shuffle(DECK_COMPOSITION), aiDiscard:     [],
+    playerOffenseHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+    playerDefenseHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+    aiOffenseHistory:     { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+    aiDefenseHistory:     { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+  };
+
+  drawHand(state.playerDeck, state.playerDiscard, state.playerHand);
+  drawHand(state.aiDeck,     state.aiDiscard,     state.aiHand);
+
+  const stats = {
+    turns: 0, shots: 0, goals: 0,
+    shotsByRow: Array(6).fill(0),
+    goalsByRow: Array(6).fill(0),
+  };
+
+  while (state.scores.player < GOALS_TO_WIN && state.scores.ai < GOALS_TO_WIN) {
+    stats.turns++;
+    if (stats.turns > 2000) break;
+
+    const poss  = state.possession;
+    const opp   = poss === 'player' ? 'ai' : 'player';
+    const offHand       = poss === 'player' ? state.playerHand          : state.aiHand;
+    const defHand       = poss === 'player' ? state.aiHand              : state.playerHand;
+    const offDefHistory = poss === 'player' ? state.aiDefenseHistory     : state.playerDefenseHistory;
+    const defOffHistory = poss === 'player' ? state.playerOffenseHistory : state.aiOffenseHistory;
+
+    const offCard = pickOffense(state.ball, poss, offHand, offDefHistory);
+    const defCard = pickDefense(defHand, defOffHistory, state.ball, poss);
+
+    (poss === 'player' ? state.playerOffenseHistory : state.aiOffenseHistory)[offCard]++;
+    (poss === 'player' ? state.aiDefenseHistory     : state.playerDefenseHistory)[defCard]++;
+
+    const match = offCard === defCard;
+
+    if (offCard === 'Shoot') {
+      stats.shots++;
+      const dist = poss === 'player' ? state.ball.y : (10 - state.ball.y);
+      if (dist >= 0 && dist <= 5) stats.shotsByRow[dist]++;
+
+      if (match) {
+        state.possession = opp;
+        const kickRoll = rollDie();
+        const kickDist = Math.ceil(kickRoll / 3);
+        const newY = opp === 'player'
+          ? Math.max(state.ball.y - kickDist, 0)
+          : Math.min(state.ball.y + kickDist, GRID_H - 1);
+        state.ball = { x: state.ball.x, y: newY };
+      } else {
+        const diff = getDifficulty(state.ball.x, state.ball.y, poss);
+        const roll = rollDie();
+        if (diff !== null && roll > diff) {
+          stats.goals++;
+          if (dist >= 0 && dist <= 5) stats.goalsByRow[dist]++;
+          state.scores[poss]++;
+          state.ball = { x: 2, y: 5 };
+          state.possession = opp;
+        } else {
+          state.possession = opp;
+        }
+      }
+    } else if (match) {
+      state.possession = opp;
+      if (offCard === 'Forward') {
+        const newY = poss === 'player'
+          ? Math.min(state.ball.y + 1, GRID_H - 1)
+          : Math.max(state.ball.y - 1, 0);
+        state.ball = { x: state.ball.x, y: newY };
+      }
     } else {
-      const actualCard = card === 'Block' ? 'Shoot' : card;
-      weights[card] = (history[actualCard] || 0) + 1;
-      if (card === 'Block' && !canShoot(state)) weights[card] = 0;
+      let { x, y } = state.ball;
+      const dist = offCard === 'Forward' ? 2 : 1;
+      if      (offCard === 'Forward') y += poss === 'player' ? -dist : dist;
+      else if (offCard === 'Left')    x -= 1;
+      else if (offCard === 'Right')   x += 1;
+      if (x < 0 || x >= GRID_W || y < 0 || y >= GRID_H) {
+        state.possession = opp;
+      } else {
+        state.ball = { x, y };
+      }
     }
+
+    drawHand(state.playerDeck, state.playerDiscard, state.playerHand);
+    drawHand(state.aiDeck,     state.aiDiscard,     state.aiHand);
+  }
+
+  return {
+    winner: state.scores.player >= GOALS_TO_WIN ? 'player' : 'ai',
+    score:  `${state.scores.player}-${state.scores.ai}`,
+    ...stats,
+  };
+}
+
+// ── Run simulation ─────────────────────────────────────────────────────────
+
+console.log(`Running ${NUM_GAMES.toLocaleString()} games...\n`);
+
+const results = {
+  playerWins: 0, aiWins: 0, scores: {},
+  totalTurns: 0, totalShots: 0, totalGoals: 0,
+  shotsByRow: Array(6).fill(0), goalsByRow: Array(6).fill(0),
+};
+
+for (let i = 0; i < NUM_GAMES; i++) {
+  const r = simGame(i % 2 === 0 ? 'player' : 'ai');
+  if (r.winner === 'player') results.playerWins++;
+  else results.aiWins++;
+  results.scores[r.score] = (results.scores[r.score] || 0) + 1;
+  results.totalTurns += r.turns;
+  results.totalShots += r.shots;
+  results.totalGoals += r.goals;
+  for (let row = 0; row < 6; row++) {
+    results.shotsByRow[row] += r.shotsByRow[row];
+    results.goalsByRow[row] += r.goalsByRow[row];
+  }
+}
+
+const pct = (n, d = NUM_GAMES) => (n / d * 100).toFixed(1) + '%';
+const avg = n => (n / NUM_GAMES).toFixed(1);
+
+console.log('── Results ───────────────────────────────');
+console.log(`Player wins:    ${results.playerWins.toLocaleString().padStart(7)} (${pct(results.playerWins)})`);
+console.log(`AI wins:        ${results.aiWins.toLocaleString().padStart(7)} (${pct(results.aiWins)})`);
+console.log(`Avg turns/game: ${avg(results.totalTurns)}`);
+console.log(`Avg shots/game: ${avg(results.totalShots)}`);
+console.log(`Avg goals/game: ${avg(results.totalGoals)}`);
+
+console.log('\n── Score distribution ────────────────────');
+Object.entries(results.scores)
+  .sort((a, b) => b[1] - a[1])
+  .forEach(([score, count]) => {
+    const bar = '█'.repeat(Math.round(count / NUM_GAMES * 50));
+    console.log(`  ${score.padEnd(6)} ${bar} ${pct(count)}`);
   });
 
-  return weightedRandom(weights);
+console.log('\n── Shots & conversion by row ─────────────');
+console.log('  Row  Label        Shots    Goals   Conv%');
+const labels = ['goal line', 'row 1    ', 'row 2    ', 'row 3    ', 'row 4    ', 'midfield '];
+for (let row = 0; row < 6; row++) {
+  const shots = results.shotsByRow[row];
+  const goals = results.goalsByRow[row];
+  const conv  = shots > 0 ? pct(goals, shots) : '   n/a';
+  console.log(`  ${row}    ${labels[row]}  ${String(shots).padStart(6)}   ${String(goals).padStart(5)}   ${conv}`);
 }
-
-function runGame() {
-  const state = newState();
-  drawHand(state, 'player');
-  drawHand(state, 'ai');
-
-  while (!state.winner && state.turns < 1000) {
-    state.turns++;
-    const attacker = state.possession;
-    const defender = attacker === 'player' ? 'ai' : 'player';
-    
-    const offCard = pickMove(state, attacker, true);
-    const defCardRaw = pickMove(state, defender, false);
-    const defCard = defCardRaw === 'Block' ? 'Shoot' : defCardRaw;
-
-    state[`${attacker}CardHistory`][offCard]++;
-    state[`${defender}DefenseHistory`][defCard];
-
-    if (offCard === defCard) {
-      state.possession = defender;
-      if (offCard === 'Shoot') {
-        const kickRoll = rollDie();
-        const kickDist = Math.ceil(kickRoll / 6); 
-        const { x, y } = state.ball;
-        state.ball.y = state.possession === 'player' ? Math.max(y - kickDist, 0) : Math.min(y + kickDist, GRID_H - 1);
-      } else if (offCard === 'Forward') {
-        const pos = moveBall(state, 'Forward', 1);
-        if (!pos.oob) state.ball = pos;
-      }
-    } else if (offCard === 'Shoot') {
-      const diff = getDiff(state, state.ball.x, state.ball.y);
-      const roll = rollDie();
-      if (roll > diff) {
-        state.scores[attacker]++;
-        if (state.scores[attacker] >= GOALS_TO_WIN) {
-          state.winner = attacker;
-        } else {
-          state.ball = { x: 2, y: 5 };
-          state.possession = defender;
-        }
-      } else {
-        state.possession = defender;
-      }
-    } else {
-      const dist = offCard === 'Forward' ? 2 : 1;
-      const pos = moveBall(state, offCard, dist);
-      if (pos.oob) {
-        state.possession = defender;
-      } else {
-        state.ball = pos;
-      }
-    }
-
-    if (!state.winner) {
-      drawHand(state, 'player');
-      drawHand(state, 'ai');
-    }
-  }
-  return state;
-}
-
-const GAMES = 10000;
-const results = { playerWins: 0, aiWins: 0, totalTurns: 0, turnCounts: [] };
-
-for (let i = 0; i < GAMES; i++) {
-  const game = runGame();
-  if (game.winner === 'player') results.playerWins++;
-  else if (game.winner === 'ai') results.aiWins++;
-  results.totalTurns += game.turns;
-  results.turnCounts.push(game.turns);
-}
-
-console.log(`--- Simulation Results (5x11, Row-by-Row Diff, Fwd=2, Counter=2, d12, ${GAMES} games) ---`);
-console.log(`Player Wins (Started): ${results.playerWins} (${(results.playerWins/GAMES*100).toFixed(1)}%)`);
-console.log(`AI Wins (Opponent):    ${results.aiWins} (${(results.aiWins/GAMES*100).toFixed(1)}%)`);
-console.log(`Avg Game Length:       ${(results.totalTurns/GAMES).toFixed(1)} turns`);
-results.turnCounts.sort((a,b) => a-b);
-console.log(`Median Game Length:    ${results.turnCounts[Math.floor(GAMES/2)]} turns`);
-console.log('------------------------------------------');

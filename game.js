@@ -4,7 +4,7 @@
 
 const GRID_W      = 5;
 const GRID_H      = 11;
-const GOALS_TO_WIN = 3;
+const GOALS_TO_WIN = 2;
 const DIE_SIZE     = 12;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯', Block: '🛡️' };
 const DECK_COMPOSITION = [
