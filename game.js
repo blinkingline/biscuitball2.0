@@ -3,7 +3,7 @@
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const GRID_W      = 5;
-const GRID_H      = 11;
+const GRID_H      = 7;
 const GOALS_TO_WIN = 3;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯', Block: '🛡️' };
 const DECK_COMPOSITION = [
@@ -12,7 +12,7 @@ const DECK_COMPOSITION = [
   'Right', 'Right', 'Right'
 ];
 const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
-const DIFF_MID  = [19, 19, 20, 19, 19]; // difficulty at halfway line (furthest row)
+const DIFF_MID  = [16, 16, 17, 16, 16]; // difficulty at halfway line (furthest row)
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ function shuffle(array) {
 
 function newState() {
   const s = {
-    ball:       { x: 2, y: 5 },
+    ball:       { x: 2, y: 3 },
     possession: 'player',           // 'player' | 'ai'
     scores:     { player: 0, ai: 0 },
     phase:      'selectCard',        // 'selectCard' | 'aiThink' | 'playerDefend' | 'resolving' | 'gameOver'
@@ -85,24 +85,24 @@ function showScreen(id) {
 // ── Game helpers ───────────────────────────────────────────────────────────
 
 function canShoot() {
-  return state.possession === 'player' ? state.ball.y <= 5 : state.ball.y >= 5;
+  return state.possession === 'player' ? state.ball.y <= 3 : state.ball.y >= 3;
 }
 
 function calcDiff(x, dist) {
-  // dist: 0 = goal line, 5 = halfway line
-  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 5);
+  // dist: 0 = goal line, 3 = halfway line
+  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 3);
 }
 
 function shotDifficulty() {
   const { x, y } = state.ball;
-  const dist = state.possession === 'player' ? y : (10 - y);
+  const dist = state.possession === 'player' ? y : (6 - y);
   return calcDiff(x, dist);
 }
 
 function cellDifficulty(x, y) {
-  if (state.possession === 'player' && y > 5) return null;
-  if (state.possession === 'ai'     && y < 5) return null;
-  const dist = state.possession === 'player' ? y : (10 - y);
+  if (state.possession === 'player' && y > 3) return null;
+  if (state.possession === 'ai'     && y < 3) return null;
+  const dist = state.possession === 'player' ? y : (6 - y);
   return calcDiff(x, dist);
 }
 
@@ -145,7 +145,7 @@ function aiPickOffense() {
   hand.forEach(card => {
     if (card === 'Shoot') {
       if (canShoot()) {
-        const dist = 10 - y;
+        const dist = 6 - y;
         weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.08) * avoid('Shoot') * 4;
       } else {
         weights.Shoot = 0;
@@ -235,7 +235,7 @@ function afterResolve(result) {
         return;
       }
 
-      state.ball = { x: 2, y: 5 };
+      state.ball = { x: 2, y: 3 };
       switchPossession();
       log(state.possession === 'player' ? 'YOU have the biscuit.' : 'AI has the biscuit.');
     } else {
@@ -306,7 +306,7 @@ function buildGrid() {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.id = `c${x}${y}`;
-      if (y === 5)                       cell.classList.add('midfield');
+      if (y === 3)                       cell.classList.add('midfield');
       if (y === 0 || y === GRID_H - 1)  cell.classList.add('goal-row');
       field.appendChild(cell);
     }

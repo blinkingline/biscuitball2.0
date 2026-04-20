@@ -1,11 +1,11 @@
 'use strict';
 
 const GRID_W = 5;
-const GRID_H = 11;
+const GRID_H = 7;
 const GOALS_TO_WIN = 3;
 const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Left', 'Right', 'Right', 'Right'];
 const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
-const DIFF_MID  = [19, 19, 20, 19, 19]; // difficulty at halfway line (furthest row)
+const DIFF_MID  = [16, 16, 17, 16, 16]; // difficulty at halfway line (furthest row)
 
 function shuffle(array) {
   const a = [...array];
@@ -18,7 +18,7 @@ function shuffle(array) {
 
 function newState() {
   return {
-    ball: { x: 2, y: 5 },
+    ball: { x: 2, y: 3 },
     possession: 'player',
     scores: { player: 0, ai: 0 },
     playerHand: [],
@@ -56,16 +56,16 @@ function drawHand(state, side) {
 }
 
 function canShoot(state) {
-  return state.possession === 'player' ? state.ball.y <= 5 : state.ball.y >= 5;
+  return state.possession === 'player' ? state.ball.y <= 3 : state.ball.y >= 3;
 }
 
 function calcDiff(x, dist) {
-  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 5);
+  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 3);
 }
 
 function shotDifficulty(state) {
   const { x, y } = state.ball;
-  const dist = state.possession === 'player' ? y : (10 - y);
+  const dist = state.possession === 'player' ? y : (6 - y);
   return calcDiff(x, dist);
 }
 
@@ -101,7 +101,7 @@ function pickMove(state, side, isOffense) {
     if (isOffense) {
       if (card === 'Shoot') {
         if (canShoot(state)) {
-          const dist = side === 'player' ? y : (10 - y);
+          const dist = side === 'player' ? y : (6 - y);
           weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.08) * avoid('Shoot') * 4;
         } else weights.Shoot = 0;
       } else if (card === 'Forward') weights.Forward = avoid('Forward') * 5;
@@ -152,7 +152,7 @@ function runGame() {
         if (state.scores[attacker] >= GOALS_TO_WIN) {
           state.winner = attacker;
         } else {
-          state.ball = { x: 2, y: 5 };
+          state.ball = { x: 2, y: 3 };
           state.possession = defender;
         }
       } else {
