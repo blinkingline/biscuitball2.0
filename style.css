@@ -287,10 +287,12 @@ html, body {
   border-color: #0e1f10;
 }
 
-.cell.goal-center {
-  font-size: 1rem;
-  background: #0d2212;
-  border-color: #1e4020;
+.goal-net {
+  font-size: 1.3rem;
+  width: min(250px, 86vw);
+  text-align: center;
+  line-height: 1;
+  z-index: 1;
 }
 
 /* ── Log area ────────────────────────────────────────────── */

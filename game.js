@@ -232,9 +232,8 @@ function buildGrid() {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.id = `c${x}${y}`;
-      if (y === 5)                        cell.classList.add('midfield');
+      if (y === 5)                       cell.classList.add('midfield');
       if (y === 0 || y === GRID_H - 1)  cell.classList.add('goal-row');
-      if ((y === 0 || y === GRID_H - 1) && x === 2) cell.classList.add('goal-center');
       field.appendChild(cell);
     }
   }
@@ -257,8 +256,6 @@ function updateGrid() {
       if (state.ball.x === x && state.ball.y === y) {
         cell.textContent = '⚽';
         cell.classList.add('has-ball');
-      } else if (cell.classList.contains('goal-center')) {
-        cell.textContent = '🥅';
       } else {
         const diff = cellDifficulty(x, y);
         if (diff === null) {
