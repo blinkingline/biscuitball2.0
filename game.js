@@ -121,7 +121,8 @@ function resolveRound(offCard, defCard) {
       switchPossession();
       const pos = moveBall('Forward');
       if (!pos.oob) state.ball = pos;
-      log('🛡️ Shot blocked!');
+      const kicker = state.possession === 'player' ? 'You take' : 'AI takes';
+      log(`🛡️ Shot blocked! ${kicker} the goal kick.`);
       return { type: 'blocked' };
     }
     const diff  = shotDifficulty();
