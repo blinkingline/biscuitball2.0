@@ -2,17 +2,18 @@
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const GRID_W      = 5;
-const GRID_H      = 7;
+const GRID_W      = 3;
+const GRID_H      = 9;
 const GOALS_TO_WIN = 3;
+const DIE_SIZE     = 12;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯', Block: '🛡️' };
 const DECK_COMPOSITION = [
   'Forward', 'Forward', 'Forward', 'Forward', 'Forward',
-  'Left', 'Left', 'Left',
-  'Right', 'Right', 'Right'
+  'Left', 'Left',
+  'Right', 'Right'
 ];
-const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
-const DIFF_MID  = [16, 16, 17, 16, 16]; // difficulty at halfway line (furthest row)
+const DIFF_GOAL = [2, 1, 2];    // difficulty at goal line (closest row)
+const DIFF_MID  = [11, 12, 11]; // difficulty at halfway line (row 4)
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ function shuffle(array) {
 
 function newState() {
   const s = {
-    ball:       { x: 2, y: 3 },
+    ball:       { x: 1, y: 4 },
     possession: 'player',           // 'player' | 'ai'
     scores:     { player: 0, ai: 0 },
     phase:      'selectCard',        // 'selectCard' | 'aiThink' | 'playerDefend' | 'resolving' | 'gameOver'
@@ -85,24 +86,24 @@ function showScreen(id) {
 // ── Game helpers ───────────────────────────────────────────────────────────
 
 function canShoot() {
-  return state.possession === 'player' ? state.ball.y <= 3 : state.ball.y >= 3;
+  return state.possession === 'player' ? state.ball.y <= 4 : state.ball.y >= 4;
 }
 
 function calcDiff(x, dist) {
-  // dist: 0 = goal line, 3 = halfway line
-  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 3);
+  // dist: 0 = goal line, 4 = halfway line
+  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 4);
 }
 
 function shotDifficulty() {
   const { x, y } = state.ball;
-  const dist = state.possession === 'player' ? y : (6 - y);
+  const dist = state.possession === 'player' ? y : (8 - y);
   return calcDiff(x, dist);
 }
 
 function cellDifficulty(x, y) {
-  if (state.possession === 'player' && y > 3) return null;
-  if (state.possession === 'ai'     && y < 3) return null;
-  const dist = state.possession === 'player' ? y : (6 - y);
+  if (state.possession === 'player' && y > 4) return null;
+  if (state.possession === 'ai'     && y < 4) return null;
+  const dist = state.possession === 'player' ? y : (8 - y);
   return calcDiff(x, dist);
 }
 
@@ -119,6 +120,10 @@ function switchPossession() {
 }
 
 function log(msg) { state.history.push(msg); }
+
+function rollDie() {
+  return Math.floor(Math.random() * DIE_SIZE) + 1;
+}
 
 // ── AI ─────────────────────────────────────────────────────────────────────
 
@@ -145,17 +150,17 @@ function aiPickOffense() {
   hand.forEach(card => {
     if (card === 'Shoot') {
       if (canShoot()) {
-        const dist = 6 - y;
-        weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.08) * avoid('Shoot') * 4;
+        const dist = 8 - y;
+        weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 1) * 0.1) * avoid('Shoot') * 4;
       } else {
         weights.Shoot = 0;
       }
     } else if (card === 'Forward') {
       weights.Forward = avoid('Forward') * 5;
     } else if (card === 'Left') {
-      weights.Left = x > 0 ? avoid('Left')  * (x >= 3 ? 3 : 2) : 0;
+      weights.Left = x > 0 ? avoid('Left')  * (x >= 2 ? 3 : 2) : 0;
     } else if (card === 'Right') {
-      weights.Right = x < 4 ? avoid('Right') * (x <= 1 ? 3 : 2) : 0;
+      weights.Right = x < 2 ? avoid('Right') * (x <= 0 ? 3 : 2) : 0;
     }
   });
 
@@ -183,8 +188,8 @@ function resolveRound(offCard, defCard) {
   if (offCard === 'Shoot') {
     if (match) {
       switchPossession();
-      const kickRoll = Math.floor(Math.random() * 20) + 1;
-      const kickDist = Math.ceil(kickRoll / 4);
+      const kickRoll = rollDie();
+      const kickDist = Math.ceil(kickRoll / 6); // 1-2 spaces on d12
       const { x, y } = state.ball;
       const newY = state.possession === 'player'
         ? Math.max(y - kickDist, 0)
@@ -195,7 +200,7 @@ function resolveRound(offCard, defCard) {
       return { type: 'blocked' };
     }
     const diff  = shotDifficulty();
-    const roll  = Math.floor(Math.random() * 20) + 1;
+    const roll  = rollDie();
     const scored = roll > diff;
     return { type: 'shot', roll, diff, scored };
   }
@@ -235,7 +240,7 @@ function afterResolve(result) {
         return;
       }
 
-      state.ball = { x: 2, y: 3 };
+      state.ball = { x: 1, y: 4 };
       switchPossession();
       log(state.possession === 'player' ? 'YOU have the biscuit.' : 'AI has the biscuit.');
     } else {
@@ -306,7 +311,7 @@ function buildGrid() {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.id = `c${x}${y}`;
-      if (y === 3)                       cell.classList.add('midfield');
+      if (y === 4)                       cell.classList.add('midfield');
       if (y === 0 || y === GRID_H - 1)  cell.classList.add('goal-row');
       field.appendChild(cell);
     }
@@ -314,9 +319,9 @@ function buildGrid() {
 }
 
 function diffClass(diff) {
-  if (diff <= 5)  return 'diff-easy';
-  if (diff <= 10) return 'diff-medium';
-  if (diff <= 15) return 'diff-hard';
+  if (diff <= 3)  return 'diff-easy';
+  if (diff <= 6)  return 'diff-medium';
+  if (diff <= 9)  return 'diff-hard';
   return 'diff-vhard';
 }
 

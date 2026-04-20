@@ -1,11 +1,12 @@
 'use strict';
 
-const GRID_W = 5;
-const GRID_H = 7;
+const GRID_W = 3;
+const GRID_H = 9;
 const GOALS_TO_WIN = 3;
-const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Left', 'Right', 'Right', 'Right'];
-const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
-const DIFF_MID  = [16, 16, 17, 16, 16]; // difficulty at halfway line (furthest row)
+const DIE_SIZE = 12;
+const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Right', 'Right'];
+const DIFF_GOAL = [2, 1, 2];    // difficulty at goal line (closest row)
+const DIFF_MID  = [11, 12, 11]; // difficulty at halfway line (row 4)
 
 function shuffle(array) {
   const a = [...array];
@@ -18,7 +19,7 @@ function shuffle(array) {
 
 function newState() {
   return {
-    ball: { x: 2, y: 3 },
+    ball: { x: 1, y: 4 },
     possession: 'player',
     scores: { player: 0, ai: 0 },
     playerHand: [],
@@ -56,16 +57,17 @@ function drawHand(state, side) {
 }
 
 function canShoot(state) {
-  return state.possession === 'player' ? state.ball.y <= 3 : state.ball.y >= 3;
+  return state.possession === 'player' ? state.ball.y <= 4 : state.ball.y >= 4;
 }
 
 function calcDiff(x, dist) {
-  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 3);
+  // dist: 0 = goal line, 4 = halfway line
+  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 4);
 }
 
 function shotDifficulty(state) {
   const { x, y } = state.ball;
-  const dist = state.possession === 'player' ? y : (6 - y);
+  const dist = state.possession === 'player' ? y : (8 - y);
   return calcDiff(x, dist);
 }
 
@@ -75,6 +77,10 @@ function moveBall(state, card) {
   else if (card === 'Left') x -= 1;
   else if (card === 'Right') x += 1;
   return { x, y, oob: x < 0 || x >= GRID_W || y < 0 || y >= GRID_H };
+}
+
+function rollDie() {
+  return Math.floor(Math.random() * DIE_SIZE) + 1;
 }
 
 function weightedRandom(weights) {
@@ -101,12 +107,12 @@ function pickMove(state, side, isOffense) {
     if (isOffense) {
       if (card === 'Shoot') {
         if (canShoot(state)) {
-          const dist = side === 'player' ? y : (6 - y);
-          weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.08) * avoid('Shoot') * 4;
+          const dist = side === 'player' ? y : (8 - y);
+          weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 1) * 0.1) * avoid('Shoot') * 4;
         } else weights.Shoot = 0;
       } else if (card === 'Forward') weights.Forward = avoid('Forward') * 5;
-      else if (card === 'Left') weights.Left = x > 0 ? avoid('Left') * (x >= 3 ? 3 : 2) : 0;
-      else if (card === 'Right') weights.Right = x < 4 ? avoid('Right') * (x <= 1 ? 3 : 2) : 0;
+      else if (card === 'Left') weights.Left = x > 0 ? avoid('Left') * (x >= 2 ? 3 : 2) : 0;
+      else if (card === 'Right') weights.Right = x < 2 ? avoid('Right') * (x <= 0 ? 3 : 2) : 0;
     } else {
       const actualCard = card === 'Block' ? 'Shoot' : card;
       weights[card] = (history[actualCard] || 0) + 1;
@@ -139,20 +145,20 @@ function runGame() {
       // Tackle / Block
       state.possession = defender;
       if (offCard === 'Shoot') {
-        const kickRoll = Math.floor(Math.random() * 20) + 1;
-        const kickDist = Math.ceil(kickRoll / 4);
+        const kickRoll = rollDie();
+        const kickDist = Math.ceil(kickRoll / 6); // 1-2 spaces on d12
         const { x, y } = state.ball;
         state.ball.y = state.possession === 'player' ? Math.max(y - kickDist, 0) : Math.min(y + kickDist, GRID_H - 1);
       }
     } else if (offCard === 'Shoot') {
       const diff = shotDifficulty(state);
-      const roll = Math.floor(Math.random() * 20) + 1;
+      const roll = rollDie();
       if (roll > diff) {
         state.scores[attacker]++;
         if (state.scores[attacker] >= GOALS_TO_WIN) {
           state.winner = attacker;
         } else {
-          state.ball = { x: 2, y: 3 };
+          state.ball = { x: 1, y: 4 };
           state.possession = defender;
         }
       } else {
@@ -186,7 +192,7 @@ for (let i = 0; i < GAMES; i++) {
   results.turnCounts.push(game.turns);
 }
 
-console.log(`--- Simulation Results (${GAMES} games) ---`);
+console.log(`--- Simulation Results (3x9 grid, d12, ${GAMES} games) ---`);
 console.log(`Player Wins (Started): ${results.playerWins} (${(results.playerWins/GAMES*100).toFixed(1)}%)`);
 console.log(`AI Wins (Opponent):    ${results.aiWins} (${(results.aiWins/GAMES*100).toFixed(1)}%)`);
 console.log(`Avg Game Length:       ${(results.totalTurns/GAMES).toFixed(1)} turns`);
