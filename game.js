@@ -14,12 +14,12 @@ const DECK_COMPOSITION = [
 ];
 
 const ROW_DIFFS = [
-  [2, 2, 1, 2, 2],    // Row 0 (Goal)
+  [2, 1, 1, 1, 2],    // Row 0 (Goal)
   [3, 2, 2, 2, 3],    // Row 1
-  [5, 3, 3, 3, 5],    // Row 2
-  [8, 5, 5, 5, 8],    // Row 3
-  [10, 8, 8, 8, 10],  // Row 4
-  [11, 11, 11, 11, 11] // Row 5 (Midfield)
+  [5, 3, 2, 3, 5],    // Row 2
+  [7, 5, 4, 5, 7],    // Row 3
+  [9, 7, 6, 7, 9],    // Row 4
+  [11, 11, 12, 11, 11] // Row 5 (Midfield)
 ];
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ function resolveRound(offCard, defCard) {
     if (match) {
       switchPossession();
       const kickRoll = rollDie();
-      const kickDist = Math.ceil(kickRoll / 6); // 1-2 spaces on d12
+      const kickDist = Math.ceil(kickRoll / 3); // 1-4 spaces on d12
       const { x, y } = state.ball;
       const newY = state.possession === 'player'
         ? Math.max(y - kickDist, 0)
