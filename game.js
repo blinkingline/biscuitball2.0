@@ -49,9 +49,9 @@ function newState() {
 }
 
 function drawHand(side) {
-  const sideDeck = \`\${side}Deck\`;
-  const sideDiscard = \`\${side}Discard\`;
-  const sideHand = \`\${side}Hand\`;
+  const sideDeck = `${side}Deck`;
+  const sideDiscard = `${side}Discard`;
+  const sideHand = `${side}Hand`;
 
   // Move current hand to discard
   state[sideDiscard].push(...state[sideHand]);
@@ -79,7 +79,7 @@ const $ = id => document.getElementById(id);
 
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  \$(id).classList.add('active');
+  $(id).classList.add('active');
 }
 
 // ── Game helpers ───────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ function resolveRound(offCard, defCard) {
         : Math.min(y + kickDist, GRID_H - 1);
       state.ball = { x, y: newY };
       const kicker = state.possession === 'player' ? 'You take' : 'AI takes';
-      log(\`🛡️ Blocked! \${kicker} the goal kick (rolled \${kickRoll} → \${kickDist} spaces).\`);
+      log(`🛡️ Blocked! ${kicker} the goal kick (rolled ${kickRoll} → ${kickDist} spaces).`);
       return { type: 'blocked' };
     }
     const diff  = shotDifficulty();
@@ -215,7 +215,7 @@ function resolveRound(offCard, defCard) {
     return { type: 'oob' };
   }
   state.ball = pos;
-  log(\`✅ \${CARD_EMOJI[offCard]} \${offCard}\`);
+  log(`✅ ${CARD_EMOJI[offCard]} ${offCard}`);
   return { type: 'moved' };
 }
 
@@ -227,7 +227,7 @@ function afterResolve(result) {
     if (scored) {
       const scorer = state.possession;
       state.scores[scorer]++;
-      log(\`⚽ GOAL! (rolled \${roll}, needed >\${diff})\`);
+      log(`⚽ GOAL! (rolled ${roll}, needed >${diff})`);
 
       if (state.scores[scorer] >= GOALS_TO_WIN) {
         state.winner = scorer;
@@ -241,7 +241,7 @@ function afterResolve(result) {
       switchPossession();
       log(state.possession === 'player' ? 'YOU have the biscuit.' : 'AI has the biscuit.');
     } else {
-      log(\`❌ Miss! (rolled \${roll}, needed >\${diff})\`);
+      log(`❌ Miss! (rolled ${roll}, needed >${diff})`);
       switchPossession();
     }
   }
@@ -301,13 +301,13 @@ function scheduleAiTurn() {
 // ── Render ─────────────────────────────────────────────────────────────────
 
 function buildGrid() {
-  const field = \$('field');
+  const field = $('field');
   field.innerHTML = '';
   for (let y = 0; y < GRID_H; y++) {
     for (let x = 0; x < GRID_W; x++) {
       const cell = document.createElement('div');
       cell.className = 'cell';
-      cell.id = \`c\${x}\${y}\`;
+      cell.id = `c${x}${y}`;
       if (y === 5)                       cell.classList.add('midfield');
       if (y === 0 || y === GRID_H - 1)  cell.classList.add('goal-row');
       field.appendChild(cell);
@@ -325,9 +325,9 @@ function diffClass(diff) {
 function updateGrid() {
   for (let y = 0; y < GRID_H; y++) {
     for (let x = 0; x < GRID_W; x++) {
-      const cell = \$(\`c\${x}\${y}\`);
+      const cell = $(`c${x}${y}`);
       cell.className = cell.className
-        .replace(/\\b(has-ball|diff-\\w+|no-shot)\\b/g, '').trim();
+        .replace(/\b(has-ball|diff-\w+|no-shot)\b/g, '').trim();
 
       if (state.ball.x === x && state.ball.y === y) {
         cell.textContent = '⚽';
@@ -347,10 +347,10 @@ function updateGrid() {
 }
 
 function updateUI() {
-  \$('score-player').textContent = state.scores.player;
-  \$('score-ai').textContent     = state.scores.ai;
+  $('score-player').textContent = state.scores.player;
+  $('score-ai').textContent     = state.scores.ai;
 
-  const possEl = \$('poss-label');
+  const possEl = $('poss-label');
   if (state.possession === 'player') {
     possEl.textContent = '🔴 YOU';
     possEl.className   = 'poss-you';
@@ -359,7 +359,7 @@ function updateUI() {
     possEl.className   = 'poss-ai';
   }
 
-  const phaseEl = \$('phase-label');
+  const phaseEl = $('phase-label');
   switch (state.phase) {
     case 'selectCard':
       phaseEl.textContent = state.possession === 'player' ? 'Pick your play' : 'AI thinking...';
@@ -378,8 +378,8 @@ function updateUI() {
       break;
   }
 
-  const offEl = \$('btns-offense');
-  const defEl = \$('btns-defense');
+  const offEl = $('btns-offense');
+  const defEl = $('btns-defense');
   offEl.classList.add('hidden');
   defEl.classList.add('hidden');
 
@@ -391,14 +391,14 @@ function updateUI() {
     renderHand('btns-defense', [...state.playerHand, 'Block'], onPlayerDefense);
   }
 
-  const logEl = \$('log-area');
+  const logEl = $('log-area');
   logEl.innerHTML = state.history.slice(-3).map(m =>
-    \`<div class="log-entry">\${m}</div>\`
+    `<div class="log-entry">${m}</div>`
   ).join('');
 }
 
 function renderHand(containerId, cards, callback) {
-  const container = \$(containerId);
+  const container = $(containerId);
   container.innerHTML = '';
   
   if (containerId === 'btns-defense') {
@@ -414,7 +414,7 @@ function renderHand(containerId, cards, callback) {
        btn.className = 'def-btn';
        if (card === 'Block') btn.classList.add('block-btn');
        btn.dataset.card = card;
-       btn.innerHTML = \`\${CARD_EMOJI[card]}<span>\${card === 'Block' ? 'Block' : card.substring(0,4)}</span>\`;
+       btn.innerHTML = `${CARD_EMOJI[card]}<span>${card === 'Block' ? 'Block' : card.substring(0,4)}</span>`;
        btn.disabled = card === 'Block' && !canShoot(); // AI can only shoot in your half
        btn.onclick = () => callback(card);
        btnGroup.appendChild(btn);
@@ -426,7 +426,7 @@ function renderHand(containerId, cards, callback) {
        btn.className = 'card-btn';
        if (card === 'Shoot') btn.classList.add('shoot-btn');
        btn.dataset.card = card;
-       btn.innerHTML = \`\${CARD_EMOJI[card]}<span>\${card.substring(0,4)}</span>\`;
+       btn.innerHTML = `${CARD_EMOJI[card]}<span>${card.substring(0,4)}</span>`;
        btn.disabled = card === 'Shoot' && !canShoot();
        btn.onclick = () => callback(card);
        container.appendChild(btn);
@@ -445,27 +445,27 @@ function showGameOver() {
   const { player, ai } = state.scores;
   const win = state.winner === 'player';
 
-  \$('gameover-icon').textContent = win ? '🏆' : '😤';
-  const title = \$('gameover-title');
+  $('gameover-icon').textContent = win ? '🏆' : '😤';
+  const title = $('gameover-title');
   title.textContent = win ? 'YOU WIN!' : 'AI WINS!';
   title.className = win ? '' : 'cpu-win';
 
-  \$('final-scores').innerHTML = \`
+  $('final-scores').innerHTML = `
     <div class="final-score-row">
       <span class="you-label">YOU</span>
-      <span class="score you-score">\${player}</span>
+      <span class="score you-score">${player}</span>
       <span class="sep">–</span>
-      <span class="score ai-score">\${ai}</span>
+      <span class="score ai-score">${ai}</span>
       <span class="ai-label">AI</span>
     </div>
-  \`;
+  `;
 
   showScreen('screen-gameover');
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
 
-\$('btn-start').addEventListener('click', () => {
+$('btn-start').addEventListener('click', () => {
   state = newState();
   drawHand('player');
   drawHand('ai');
@@ -474,6 +474,6 @@ function showGameOver() {
   showScreen('screen-game');
 });
 
-\$('btn-restart').addEventListener('click', () => showScreen('screen-title'));
+$('btn-restart').addEventListener('click', () => showScreen('screen-title'));
 
 showScreen('screen-title');
