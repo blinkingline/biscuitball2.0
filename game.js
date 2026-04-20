@@ -6,7 +6,8 @@ const GRID_W      = 5;
 const GRID_H      = 11;
 const GOALS_TO_WIN = 5;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯' };
-const COL_PENALTY = [3, 1, 0, 1, 3];
+const DIFF_GOAL = [5, 3, 2, 3, 5];    // difficulty at goal line (closest row)
+const DIFF_MID  = [19, 19, 20, 19, 19]; // difficulty at halfway line (furthest row)
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -39,21 +40,22 @@ function canShoot() {
   return state.possession === 'player' ? state.ball.y < 5 : state.ball.y > 5;
 }
 
+function calcDiff(x, dist) {
+  // dist: 0 = goal line, 4 = halfway line
+  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 4);
+}
+
 function shotDifficulty() {
   const { x, y } = state.ball;
-  const base = state.possession === 'player'
-    ? Math.round(2 + y * 3.4)
-    : Math.round(2 + (10 - y) * 3.4);
-  return base + COL_PENALTY[x];
+  const dist = state.possession === 'player' ? y : (10 - y);
+  return calcDiff(x, dist);
 }
 
 function cellDifficulty(x, y) {
   if (state.possession === 'player' && y >= 5) return null;
   if (state.possession === 'ai'     && y <= 5) return null;
-  const base = state.possession === 'player'
-    ? Math.round(2 + y * 3.4)
-    : Math.round(2 + (10 - y) * 3.4);
-  return base + COL_PENALTY[x];
+  const dist = state.possession === 'player' ? y : (10 - y);
+  return calcDiff(x, dist);
 }
 
 function moveBall(card) {
