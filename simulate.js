@@ -58,15 +58,23 @@ function weightedRandom(weights) {
   return entries[entries.length - 1][0];
 }
 
-function drawHand(deck, discard, hand) {
-  discard.push(...hand);
-  hand.length = 0;
-  for (let i = 0; i < 3; i++) {
-    if (deck.length === 0) {
-      deck.push(...shuffle(discard));
-      discard.length = 0;
-    }
-    if (deck.length > 0) hand.push(deck.pop());
+function drawOne(deck, discard, hand) {
+  if (deck.length === 0) {
+    deck.push(...shuffle(discard));
+    discard.length = 0;
+  }
+  if (deck.length > 0) hand.push(deck.pop());
+}
+
+function playHandCard(hand, discard, card) {
+  const idx = hand.indexOf(card);
+  if (idx !== -1) discard.push(hand.splice(idx, 1)[0]);
+}
+
+function discardRandom(hand, discard) {
+  if (hand.length > 0) {
+    const idx = Math.floor(Math.random() * hand.length);
+    discard.push(hand.splice(idx, 1)[0]);
   }
 }
 
@@ -118,8 +126,8 @@ function simGame(startingPossession) {
     aiBlockCooldown:      0,
   };
 
-  drawHand(state.playerDeck, state.playerDiscard, state.playerHand);
-  drawHand(state.aiDeck,     state.aiDiscard,     state.aiHand);
+  for (let i = 0; i < 3; i++) drawOne(state.playerDeck, state.playerDiscard, state.playerHand);
+  for (let i = 0; i < 3; i++) drawOne(state.aiDeck,     state.aiDiscard,     state.aiHand);
 
   const stats = {
     turns: 0, shots: 0, goals: 0,
@@ -157,9 +165,21 @@ function simGame(startingPossession) {
     const offCard = pickOffense(state.ball, poss, offHand, offDefHistory);
     const defCard = pickDefense(defHand, defOffHistory, state.ball, poss, defBlockCooldown);
 
+    // hand management: remove played cards / discard for Shoot/Block
+    const offDeck = poss === 'player' ? state.playerDeck : state.aiDeck;
+    const offDisc = poss === 'player' ? state.playerDiscard : state.aiDiscard;
+    const defDeck = opp  === 'player' ? state.playerDeck : state.aiDeck;
+    const defDisc = opp  === 'player' ? state.playerDiscard : state.aiDiscard;
+
+    if (offCard === 'Shoot') discardRandom(offHand, offDisc);
+    else                      playHandCard(offHand, offDisc, offCard);
+
     if (defCard === 'Shoot') {
       if (opp === 'player') state.playerBlockCooldown = 2;
       else                  state.aiBlockCooldown     = 2;
+      discardRandom(defHand, defDisc);
+    } else {
+      playHandCard(defHand, defDisc, defCard);
     }
 
     recordBlockPick(opp, defCard === 'Shoot');
@@ -219,8 +239,8 @@ function simGame(startingPossession) {
     if (state.playerBlockCooldown > 0) state.playerBlockCooldown--;
     if (state.aiBlockCooldown     > 0) state.aiBlockCooldown--;
 
-    drawHand(state.playerDeck, state.playerDiscard, state.playerHand);
-    drawHand(state.aiDeck,     state.aiDiscard,     state.aiHand);
+    drawOne(state.playerDeck, state.playerDiscard, state.playerHand);
+    drawOne(state.aiDeck,     state.aiDiscard,     state.aiHand);
   }
 
   // flush any open streaks

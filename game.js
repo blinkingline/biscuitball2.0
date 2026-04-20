@@ -58,29 +58,19 @@ function newState() {
   return s;
 }
 
-function drawHand(side) {
-  const sideDeck = `${side}Deck`;
-  const sideDiscard = `${side}Discard`;
-  const sideHand = `${side}Hand`;
-
-  // Move current hand to discard
-  state[sideDiscard].push(...state[sideHand]);
-  state[sideHand] = [];
-
-  // Draw 3 cards
-  for (let i = 0; i < 3; i++) {
-    if (state[sideDeck].length === 0) {
-      if (state[sideDiscard].length === 0) {
-         state[sideDeck] = shuffle(DECK_COMPOSITION);
-      } else {
-         state[sideDeck] = shuffle(state[sideDiscard]);
-         state[sideDiscard] = [];
-      }
-    }
-    if (state[sideDeck].length > 0) {
-      state[sideHand].push(state[sideDeck].pop());
-    }
+function drawOne(side) {
+  const deck = state[`${side}Deck`];
+  const disc = state[`${side}Discard`];
+  const hand = state[`${side}Hand`];
+  if (deck.length === 0) {
+    state[`${side}Deck`] = shuffle(disc);
+    state[`${side}Discard`] = [];
   }
+  if (state[`${side}Deck`].length > 0) hand.push(state[`${side}Deck`].pop());
+}
+
+function dealHand(side) {
+  for (let i = 0; i < 3; i++) drawOne(side);
 }
 
 // ── DOM helpers ────────────────────────────────────────────────────────────
@@ -128,6 +118,19 @@ function log(msg) { state.history.push(msg); }
 
 function rollDie() {
   return Math.floor(Math.random() * DIE_SIZE) + 1;
+}
+
+function playHandCard(side, card) {
+  const hand = state[`${side}Hand`];
+  const idx = hand.indexOf(card);
+  if (idx !== -1) state[`${side}Discard`].push(hand.splice(idx, 1)[0]);
+}
+
+function aiDiscardRandom() {
+  if (state.aiHand.length > 0) {
+    const idx = Math.floor(Math.random() * state.aiHand.length);
+    state.aiDiscard.push(state.aiHand.splice(idx, 1)[0]);
+  }
 }
 
 // ── AI ─────────────────────────────────────────────────────────────────────
@@ -267,9 +270,8 @@ function afterResolve(result) {
   if (state.playerBlockCooldown > 0) state.playerBlockCooldown--;
   if (state.aiBlockCooldown     > 0) state.aiBlockCooldown--;
 
-  // Draw new hands for the next round
-  drawHand('player');
-  drawHand('ai');
+  drawOne('player');
+  drawOne('ai');
   
   render();
 
@@ -283,13 +285,37 @@ function onPlayerOffense(card) {
   if (card === 'Shoot' && !canShoot()) return;
 
   state.playerCardHistory[card]++;
+
+  if (card === 'Shoot') {
+    state.phase = 'offenseDiscard';
+    render();
+    return;
+  }
+
+  playHandCard('player', card);
   state.phase = 'resolving';
   render();
 
   setTimeout(() => {
     const defCard = aiPickDefense();
-    if (defCard === 'Shoot') state.aiBlockCooldown = 2;
-    const result  = resolveRound(card, defCard);
+    if (defCard === 'Shoot') { state.aiBlockCooldown = 2; aiDiscardRandom(); }
+    else                       playHandCard('ai', defCard);
+    const result = resolveRound(card, defCard);
+    afterResolve(result);
+  }, 500);
+}
+
+function onOffenseDiscard(card) {
+  if (state.phase !== 'offenseDiscard') return;
+  playHandCard('player', card);
+  state.phase = 'resolving';
+  render();
+
+  setTimeout(() => {
+    const defCard = aiPickDefense();
+    if (defCard === 'Shoot') { state.aiBlockCooldown = 2; aiDiscardRandom(); }
+    else                       playHandCard('ai', defCard);
+    const result = resolveRound('Shoot', defCard);
     afterResolve(result);
   }, 500);
 }
@@ -297,13 +323,33 @@ function onPlayerOffense(card) {
 function onPlayerDefense(card) {
   if (state.phase !== 'playerDefend') return;
 
-  if (card === 'Block') state.playerBlockCooldown = 2;
-  state.playerDefenseHistory[card === 'Block' ? 'Shoot' : card]++;
+  if (card === 'Block') {
+    state.playerBlockCooldown = 2;
+    state.phase = 'defenseDiscard';
+    render();
+    return;
+  }
+
+  state.playerDefenseHistory[card]++;
+  playHandCard('player', card);
   state.phase = 'resolving';
   render();
 
   setTimeout(() => {
-    const result = resolveRound(state.aiCard, card === 'Block' ? 'Shoot' : card);
+    const result = resolveRound(state.aiCard, card);
+    afterResolve(result);
+  }, 500);
+}
+
+function onDefenseDiscard(card) {
+  if (state.phase !== 'defenseDiscard') return;
+  state.playerDefenseHistory['Shoot']++;
+  playHandCard('player', card);
+  state.phase = 'resolving';
+  render();
+
+  setTimeout(() => {
+    const result = resolveRound(state.aiCard, 'Shoot');
     afterResolve(result);
   }, 500);
 }
@@ -314,7 +360,9 @@ function scheduleAiTurn() {
 
   setTimeout(() => {
     state.aiCard = aiPickOffense();
-    state.phase  = 'playerDefend';
+    if (state.aiCard === 'Shoot') aiDiscardRandom();
+    else                           playHandCard('ai', state.aiCard);
+    state.phase = 'playerDefend';
     render();
   }, 900);
 }
@@ -391,6 +439,10 @@ function updateUI() {
     case 'playerDefend':
       phaseEl.textContent = 'Guess their play';
       break;
+    case 'offenseDiscard':
+    case 'defenseDiscard':
+      phaseEl.textContent = 'Discard a card';
+      break;
     case 'resolving':
       phaseEl.textContent = 'Resolving...';
       break;
@@ -410,12 +462,35 @@ function updateUI() {
   } else if (state.phase === 'playerDefend') {
     defEl.classList.remove('hidden');
     renderHand('btns-defense', [...state.playerHand, 'Block'], onPlayerDefense);
+  } else if (state.phase === 'offenseDiscard' || state.phase === 'defenseDiscard') {
+    defEl.classList.remove('hidden');
+    renderDiscardSelect('btns-defense', state.playerHand,
+      state.phase === 'offenseDiscard' ? onOffenseDiscard : onDefenseDiscard);
   }
 
   const logEl = $('log-area');
   logEl.innerHTML = state.history.slice(-3).map(m =>
     `<div class="log-entry">${m}</div>`
   ).join('');
+}
+
+function renderDiscardSelect(containerId, cards, callback) {
+  const container = $(containerId);
+  container.innerHTML = '';
+  const prompt = document.createElement('div');
+  prompt.className = 'def-prompt';
+  prompt.textContent = 'Pick a card to discard:';
+  container.appendChild(prompt);
+  const btnGroup = document.createElement('div');
+  btnGroup.className = 'def-btns';
+  cards.forEach(card => {
+    const btn = document.createElement('button');
+    btn.className = 'def-btn';
+    btn.innerHTML = `${CARD_EMOJI[card]}<span>${card.substring(0, 4)}</span>`;
+    btn.onclick = () => callback(card);
+    btnGroup.appendChild(btn);
+  });
+  container.appendChild(btnGroup);
 }
 
 function renderHand(containerId, cards, callback) {
@@ -488,8 +563,8 @@ function showGameOver() {
 
 $('btn-start').addEventListener('click', () => {
   state = newState();
-  drawHand('player');
-  drawHand('ai');
+  dealHand('player');
+  dealHand('ai');
   buildGrid();
   render();
   showScreen('screen-game');
