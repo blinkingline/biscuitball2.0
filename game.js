@@ -4,14 +4,14 @@
 
 const GRID_W      = 5;
 const GRID_H      = 11;
-const GOALS_TO_WIN = 5;
+const GOALS_TO_WIN = 3;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯', Block: '🛡️' };
 const DECK_COMPOSITION = [
-  'Forward', 'Forward', 'Forward', 'Forward',
-  'Left', 'Left',
-  'Right', 'Right'
+  'Forward', 'Forward', 'Forward', 'Forward', 'Forward',
+  'Left', 'Left', 'Left',
+  'Right', 'Right', 'Right'
 ];
-const DIFF_GOAL = [5, 3, 2, 3, 5];    // difficulty at goal line (closest row)
+const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
 const DIFF_MID  = [19, 19, 20, 19, 19]; // difficulty at halfway line (furthest row)
 
 // ── State ──────────────────────────────────────────────────────────────────
