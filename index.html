@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Biscuitball 2.0</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Title screen ───────────────────────────────────────── -->
+<div id="screen-title" class="screen">
+  <div class="title-content">
+    <div class="title-icon">⚽</div>
+    <h1>BISCUITBALL</h1>
+    <p class="subtitle">Soccer Duel · v2.0</p>
+    <div class="rules-box">
+      <h3>Rules</h3>
+      <ul>
+        <li>On <strong>offense</strong>, pick a card: <span class="c-fwd">Forward ⬆️</span>, <span class="c-lr">Left ⬅️</span>, <span class="c-lr">Right ➡️</span>, or <span class="c-shoot">Shoot 🎯</span></li>
+        <li>On <strong>defense</strong>, guess which card the attacker will play — a correct guess is a tackle!</li>
+        <li>A tackle gives the ball to the defender. <strong>Shoot</strong> is only available in the opponent's half</li>
+        <li>On a shot, roll 1–20. The number on the cell is the target you must beat</li>
+        <li>First to <strong>5 goals</strong> wins!</li>
+      </ul>
+    </div>
+    <button class="btn btn-primary" id="btn-start">Kick Off!</button>
+  </div>
+</div>
+
+<!-- ── Game screen ────────────────────────────────────────── -->
+<div id="screen-game" class="screen">
+
+  <div id="scoreboard">
+    <div class="score-col">
+      <div class="team-name you">YOU</div>
+      <div class="team-score" id="score-player">0</div>
+    </div>
+    <div class="score-center">
+      <div id="poss-label">🔴 YOU</div>
+      <div id="phase-label">Pick your play</div>
+    </div>
+    <div class="score-col right">
+      <div class="team-name ai">AI</div>
+      <div class="team-score ai" id="score-ai">0</div>
+    </div>
+  </div>
+
+  <div id="field-container">
+    <div class="goal-label ai-goal">🟦 AI GOAL</div>
+    <div id="field"></div>
+    <div class="goal-label your-goal">🔴 YOUR GOAL</div>
+  </div>
+
+  <div id="log-area"></div>
+
+  <div id="controls">
+    <div id="btns-offense" class="btn-group hidden">
+      <button class="card-btn" data-card="Forward">⬆️<span>Fwd</span></button>
+      <button class="card-btn" data-card="Left">⬅️<span>Left</span></button>
+      <button class="card-btn" data-card="Right">➡️<span>Right</span></button>
+      <button class="card-btn shoot-btn" data-card="Shoot">🎯<span>Shoot</span></button>
+    </div>
+    <div id="btns-defense" class="btn-group hidden">
+      <div class="def-prompt">Guess their play:</div>
+      <div class="def-btns">
+        <button class="def-btn" data-card="Forward">⬆️<span>Fwd</span></button>
+        <button class="def-btn" data-card="Left">⬅️<span>Left</span></button>
+        <button class="def-btn" data-card="Right">➡️<span>Right</span></button>
+        <button class="def-btn" data-card="Shoot">🎯<span>Shoot</span></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Game over screen ───────────────────────────────────── -->
+<div id="screen-gameover" class="screen">
+  <div class="overlay-content">
+    <div id="gameover-icon">🏆</div>
+    <h1 id="gameover-title">YOU WIN!</h1>
+    <div id="final-scores"></div>
+    <button class="btn btn-primary" id="btn-restart">Play Again</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
