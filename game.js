@@ -38,12 +38,12 @@ function showScreen(id) {
 // ── Game helpers ───────────────────────────────────────────────────────────
 
 function canShoot() {
-  return state.possession === 'player' ? state.ball.y < 5 : state.ball.y > 5;
+  return state.possession === 'player' ? state.ball.y <= 5 : state.ball.y >= 5;
 }
 
 function calcDiff(x, dist) {
-  // dist: 0 = goal line, 4 = halfway line
-  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 4);
+  // dist: 0 = goal line, 5 = halfway line
+  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 5);
 }
 
 function shotDifficulty() {
@@ -53,8 +53,8 @@ function shotDifficulty() {
 }
 
 function cellDifficulty(x, y) {
-  if (state.possession === 'player' && y >= 5) return null;
-  if (state.possession === 'ai'     && y <= 5) return null;
+  if (state.possession === 'player' && y > 5) return null;
+  if (state.possession === 'ai'     && y < 5) return null;
   const dist = state.possession === 'player' ? y : (10 - y);
   return calcDiff(x, dist);
 }
