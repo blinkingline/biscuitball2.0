@@ -1,12 +1,12 @@
 'use strict';
 
-const GRID_W = 3;
+const GRID_W = 5;
 const GRID_H = 9;
 const GOALS_TO_WIN = 3;
 const DIE_SIZE = 12;
-const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Right', 'Right'];
-const DIFF_GOAL = [2, 1, 2];    // difficulty at goal line (closest row)
-const DIFF_MID  = [11, 12, 11]; // difficulty at halfway line (row 4)
+const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Left', 'Right', 'Right', 'Right'];
+const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
+const DIFF_MID  = [11, 11, 12, 11, 11]; // difficulty at halfway line (row 4)
 
 function shuffle(array) {
   const a = [...array];
@@ -19,7 +19,7 @@ function shuffle(array) {
 
 function newState() {
   return {
-    ball: { x: 1, y: 4 },
+    ball: { x: 2, y: 4 },
     possession: 'player',
     scores: { player: 0, ai: 0 },
     playerHand: [],
@@ -108,11 +108,11 @@ function pickMove(state, side, isOffense) {
       if (card === 'Shoot') {
         if (canShoot(state)) {
           const dist = side === 'player' ? y : (8 - y);
-          weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 1) * 0.1) * avoid('Shoot') * 4;
+          weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.1) * avoid('Shoot') * 4;
         } else weights.Shoot = 0;
       } else if (card === 'Forward') weights.Forward = avoid('Forward') * 5;
-      else if (card === 'Left') weights.Left = x > 0 ? avoid('Left') * (x >= 2 ? 3 : 2) : 0;
-      else if (card === 'Right') weights.Right = x < 2 ? avoid('Right') * (x <= 0 ? 3 : 2) : 0;
+      else if (card === 'Left') weights.Left = x > 0 ? avoid('Left') * (x >= 3 ? 3 : 2) : 0;
+      else if (card === 'Right') weights.Right = x < 4 ? avoid('Right') * (x <= 1 ? 3 : 2) : 0;
     } else {
       const actualCard = card === 'Block' ? 'Shoot' : card;
       weights[card] = (history[actualCard] || 0) + 1;
@@ -158,7 +158,7 @@ function runGame() {
         if (state.scores[attacker] >= GOALS_TO_WIN) {
           state.winner = attacker;
         } else {
-          state.ball = { x: 1, y: 4 };
+          state.ball = { x: 2, y: 4 };
           state.possession = defender;
         }
       } else {
@@ -192,7 +192,7 @@ for (let i = 0; i < GAMES; i++) {
   results.turnCounts.push(game.turns);
 }
 
-console.log(`--- Simulation Results (3x9 grid, d12, ${GAMES} games) ---`);
+console.log(`--- Simulation Results (5x9 grid, d12, ${GAMES} games) ---`);
 console.log(`Player Wins (Started): ${results.playerWins} (${(results.playerWins/GAMES*100).toFixed(1)}%)`);
 console.log(`AI Wins (Opponent):    ${results.aiWins} (${(results.aiWins/GAMES*100).toFixed(1)}%)`);
 console.log(`Avg Game Length:       ${(results.totalTurns/GAMES).toFixed(1)} turns`);

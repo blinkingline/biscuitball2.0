@@ -236,12 +236,12 @@ html, body {
 
 #field {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 2px;
   padding: 3px;
   background: #0a1f0c;
   border: 1px solid #142818;
-  width: min(160px, 86vw);
+  width: min(250px, 86vw);
   z-index: 1;
 }
 

@@ -2,18 +2,18 @@
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const GRID_W      = 3;
+const GRID_W      = 5;
 const GRID_H      = 9;
 const GOALS_TO_WIN = 3;
 const DIE_SIZE     = 12;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯', Block: '🛡️' };
 const DECK_COMPOSITION = [
   'Forward', 'Forward', 'Forward', 'Forward', 'Forward',
-  'Left', 'Left',
-  'Right', 'Right'
+  'Left', 'Left', 'Left',
+  'Right', 'Right', 'Right'
 ];
-const DIFF_GOAL = [2, 1, 2];    // difficulty at goal line (closest row)
-const DIFF_MID  = [11, 12, 11]; // difficulty at halfway line (row 4)
+const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
+const DIFF_MID  = [11, 11, 12, 11, 11]; // difficulty at halfway line (row 4)
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ function shuffle(array) {
 
 function newState() {
   const s = {
-    ball:       { x: 1, y: 4 },
+    ball:       { x: 2, y: 4 },
     possession: 'player',           // 'player' | 'ai'
     scores:     { player: 0, ai: 0 },
     phase:      'selectCard',        // 'selectCard' | 'aiThink' | 'playerDefend' | 'resolving' | 'gameOver'
@@ -151,16 +151,16 @@ function aiPickOffense() {
     if (card === 'Shoot') {
       if (canShoot()) {
         const dist = 8 - y;
-        weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 1) * 0.1) * avoid('Shoot') * 4;
+        weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.1) * avoid('Shoot') * 4;
       } else {
         weights.Shoot = 0;
       }
     } else if (card === 'Forward') {
       weights.Forward = avoid('Forward') * 5;
     } else if (card === 'Left') {
-      weights.Left = x > 0 ? avoid('Left')  * (x >= 2 ? 3 : 2) : 0;
+      weights.Left = x > 0 ? avoid('Left')  * (x >= 3 ? 3 : 2) : 0;
     } else if (card === 'Right') {
-      weights.Right = x < 2 ? avoid('Right') * (x <= 0 ? 3 : 2) : 0;
+      weights.Right = x < 4 ? avoid('Right') * (x <= 1 ? 3 : 2) : 0;
     }
   });
 
@@ -240,7 +240,7 @@ function afterResolve(result) {
         return;
       }
 
-      state.ball = { x: 1, y: 4 };
+      state.ball = { x: 2, y: 4 };
       switchPossession();
       log(state.possession === 'player' ? 'YOU have the biscuit.' : 'AI has the biscuit.');
     } else {
