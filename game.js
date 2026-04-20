@@ -19,8 +19,9 @@ function newState() {
     possession: 'player',           // 'player' | 'ai'
     scores:     { player: 0, ai: 0 },
     phase:      'selectCard',        // 'selectCard' | 'aiThink' | 'playerDefend' | 'resolving' | 'gameOver'
-    aiCard:     null,
-    playerCardHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+    aiCard:          null,
+    playerCardHistory:    { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+    playerDefenseHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
     history:    ['Game started! YOU have the biscuit.'],
     winner:     null,
   };
@@ -87,17 +88,21 @@ function weightedRandom(weights) {
 
 function aiPickOffense() {
   const { x, y } = state.ball;
+  const dh = state.playerDefenseHistory;
+
+  // Inverse frequency: cards the player defends often are avoided
+  const avoid = card => 1 / (dh[card] + 1);
 
   if (canShoot()) {
-    const dist = 10 - y; // 0 = goal line, 4 = halfway
+    const dist = 10 - y;
     const shootProb = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.08);
-    if (Math.random() < shootProb) return 'Shoot';
+    if (Math.random() < shootProb * avoid('Shoot') * 4) return 'Shoot';
   }
 
   return weightedRandom({
-    Forward: 5,
-    Left:    x > 0 ? (x >= 3 ? 3 : 2) : 0,
-    Right:   x < 4 ? (x <= 1 ? 3 : 2) : 0,
+    Forward: avoid('Forward') * 5,
+    Left:    x > 0 ? avoid('Left')  * (x >= 3 ? 3 : 2) : 0,
+    Right:   x < 4 ? avoid('Right') * (x <= 1 ? 3 : 2) : 0,
   });
 }
 
@@ -119,10 +124,15 @@ function resolveRound(offCard, defCard) {
   if (offCard === 'Shoot') {
     if (match) {
       switchPossession();
-      const pos = moveBall('Forward');
-      if (!pos.oob) state.ball = pos;
+      const kickRoll = Math.floor(Math.random() * 20) + 1;
+      const kickDist = Math.ceil(kickRoll / 4);
+      const { x, y } = state.ball;
+      const newY = state.possession === 'player'
+        ? Math.max(y - kickDist, 0)
+        : Math.min(y + kickDist, GRID_H - 1);
+      state.ball = { x, y: newY };
       const kicker = state.possession === 'player' ? 'You take' : 'AI takes';
-      log(`🛡️ Shot blocked! ${kicker} the goal kick.`);
+      log(`🛡️ Blocked! ${kicker} the goal kick (rolled ${kickRoll} → ${kickDist} spaces).`);
       return { type: 'blocked' };
     }
     const diff  = shotDifficulty();
@@ -203,6 +213,7 @@ function onPlayerOffense(card) {
 function onPlayerDefense(card) {
   if (state.phase !== 'playerDefend') return;
 
+  state.playerDefenseHistory[card]++;
   state.phase = 'resolving';
   render();
 
