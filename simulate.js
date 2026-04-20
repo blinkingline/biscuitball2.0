@@ -91,12 +91,12 @@ function pickOffense(ball, possession, hand, defenseHistory) {
   return weightedRandom(weights) || 'Forward';
 }
 
-function pickDefense(hand, offenseHistory, ball, possession) {
+function pickDefense(hand, offenseHistory, ball, possession, blockCooldown) {
   const cards = [...new Set([...hand, 'Shoot'])];
   const weights = {};
   for (const card of cards) {
     weights[card] = (offenseHistory[card] || 0) + 1;
-    if (card === 'Shoot' && !canShoot(ball, possession)) weights[card] = 0;
+    if (card === 'Shoot' && (!canShoot(ball, possession) || blockCooldown > 0)) weights[card] = 0;
   }
   return weightedRandom(weights) || hand[0];
 }
@@ -114,6 +114,8 @@ function simGame(startingPossession) {
     playerDefenseHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
     aiOffenseHistory:     { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
     aiDefenseHistory:     { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+    playerBlockCooldown:  0,
+    aiBlockCooldown:      0,
   };
 
   drawHand(state.playerDeck, state.playerDiscard, state.playerHand);
@@ -123,7 +125,22 @@ function simGame(startingPossession) {
     turns: 0, shots: 0, goals: 0,
     shotsByRow: Array(6).fill(0),
     goalsByRow: Array(6).fill(0),
+    blockStreaks: {},   // histogram: streak_length -> count of times it occurred
   };
+
+  // track current consecutive-block streak per defending side
+  const blockStreak = { player: 0, ai: 0 };
+
+  function recordBlockPick(side, pickedBlock) {
+    if (pickedBlock) {
+      blockStreak[side]++;
+    } else {
+      if (blockStreak[side] >= 2) {
+        stats.blockStreaks[blockStreak[side]] = (stats.blockStreaks[blockStreak[side]] || 0) + 1;
+      }
+      blockStreak[side] = 0;
+    }
+  }
 
   while (state.scores.player < GOALS_TO_WIN && state.scores.ai < GOALS_TO_WIN) {
     stats.turns++;
@@ -136,8 +153,16 @@ function simGame(startingPossession) {
     const offDefHistory = poss === 'player' ? state.aiDefenseHistory     : state.playerDefenseHistory;
     const defOffHistory = poss === 'player' ? state.playerOffenseHistory : state.aiOffenseHistory;
 
+    const defBlockCooldown = opp === 'player' ? state.playerBlockCooldown : state.aiBlockCooldown;
     const offCard = pickOffense(state.ball, poss, offHand, offDefHistory);
-    const defCard = pickDefense(defHand, defOffHistory, state.ball, poss);
+    const defCard = pickDefense(defHand, defOffHistory, state.ball, poss, defBlockCooldown);
+
+    if (defCard === 'Shoot') {
+      if (opp === 'player') state.playerBlockCooldown = 2;
+      else                  state.aiBlockCooldown     = 2;
+    }
+
+    recordBlockPick(opp, defCard === 'Shoot');
 
     (poss === 'player' ? state.playerOffenseHistory : state.aiOffenseHistory)[offCard]++;
     (poss === 'player' ? state.aiDefenseHistory     : state.playerDefenseHistory)[defCard]++;
@@ -191,8 +216,18 @@ function simGame(startingPossession) {
       }
     }
 
+    if (state.playerBlockCooldown > 0) state.playerBlockCooldown--;
+    if (state.aiBlockCooldown     > 0) state.aiBlockCooldown--;
+
     drawHand(state.playerDeck, state.playerDiscard, state.playerHand);
     drawHand(state.aiDeck,     state.aiDiscard,     state.aiHand);
+  }
+
+  // flush any open streaks
+  for (const side of ['player', 'ai']) {
+    if (blockStreak[side] >= 2) {
+      stats.blockStreaks[blockStreak[side]] = (stats.blockStreaks[blockStreak[side]] || 0) + 1;
+    }
   }
 
   return {
@@ -210,6 +245,7 @@ const results = {
   playerWins: 0, aiWins: 0, scores: {},
   totalTurns: 0, totalShots: 0, totalGoals: 0,
   shotsByRow: Array(6).fill(0), goalsByRow: Array(6).fill(0),
+  blockStreaks: {},
 };
 
 for (let i = 0; i < NUM_GAMES; i++) {
@@ -223,6 +259,9 @@ for (let i = 0; i < NUM_GAMES; i++) {
   for (let row = 0; row < 6; row++) {
     results.shotsByRow[row] += r.shotsByRow[row];
     results.goalsByRow[row] += r.goalsByRow[row];
+  }
+  for (const [len, cnt] of Object.entries(r.blockStreaks)) {
+    results.blockStreaks[len] = (results.blockStreaks[len] || 0) + cnt;
   }
 }
 
@@ -252,4 +291,18 @@ for (let row = 0; row < 6; row++) {
   const goals = results.goalsByRow[row];
   const conv  = shots > 0 ? pct(goals, shots) : '   n/a';
   console.log(`  ${row}    ${labels[row]}  ${String(shots).padStart(6)}   ${String(goals).padStart(5)}   ${conv}`);
+}
+
+console.log('\n── Consecutive Block streaks (2+) ────────');
+const totalStreaks = Object.values(results.blockStreaks).reduce((a, b) => a + b, 0);
+if (totalStreaks === 0) {
+  console.log('  None observed.');
+} else {
+  Object.entries(results.blockStreaks)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .forEach(([len, cnt]) => {
+      const bar = '█'.repeat(Math.round(cnt / totalStreaks * 30));
+      console.log(`  ${len}x Block  ${bar} ${cnt.toLocaleString()} occurrences (${pct(cnt, totalStreaks)} of streaks)`);
+    });
+  console.log(`  Total streak events: ${totalStreaks.toLocaleString()} across ${NUM_GAMES.toLocaleString()} games`);
 }

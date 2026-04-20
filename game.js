@@ -50,6 +50,8 @@ function newState() {
     aiDiscard:       [],
     playerCardHistory:    { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
     playerDefenseHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
+    playerBlockCooldown:  0,
+    aiBlockCooldown:      0,
     history:    ['Game started! YOU have the biscuit.'],
     winner:     null,
   };
@@ -173,11 +175,11 @@ function aiPickOffense() {
 function aiPickDefense() {
   const h = state.playerCardHistory;
   const hand = [...state.aiHand, 'Shoot'];
-  
+
   const weights = {};
   hand.forEach(card => {
     weights[card] = h[card === 'Shoot' ? 'Shoot' : card] + 1;
-    if (card === 'Shoot' && !canShoot()) weights[card] = 0;
+    if (card === 'Shoot' && (!canShoot() || state.aiBlockCooldown > 0)) weights[card] = 0;
   });
 
   return weightedRandom(weights);
@@ -261,7 +263,10 @@ function afterResolve(result) {
   }
 
   state.phase = 'selectCard';
-  
+
+  if (state.playerBlockCooldown > 0) state.playerBlockCooldown--;
+  if (state.aiBlockCooldown     > 0) state.aiBlockCooldown--;
+
   // Draw new hands for the next round
   drawHand('player');
   drawHand('ai');
@@ -283,6 +288,7 @@ function onPlayerOffense(card) {
 
   setTimeout(() => {
     const defCard = aiPickDefense();
+    if (defCard === 'Shoot') state.aiBlockCooldown = 2;
     const result  = resolveRound(card, defCard);
     afterResolve(result);
   }, 500);
@@ -291,6 +297,7 @@ function onPlayerOffense(card) {
 function onPlayerDefense(card) {
   if (state.phase !== 'playerDefend') return;
 
+  if (card === 'Block') state.playerBlockCooldown = 2;
   state.playerDefenseHistory[card === 'Block' ? 'Shoot' : card]++;
   state.phase = 'resolving';
   render();
@@ -429,7 +436,7 @@ function renderHand(containerId, cards, callback) {
        if (card === 'Block') btn.classList.add('block-btn');
        btn.dataset.card = card;
        btn.innerHTML = `${CARD_EMOJI[card]}<span>${card === 'Block' ? 'Block' : card.substring(0,4)}</span>`;
-       btn.disabled = card === 'Block' && !canShoot(); // AI can only shoot in your half
+       btn.disabled = card === 'Block' && (!canShoot() || state.playerBlockCooldown > 0);
        btn.onclick = () => callback(card);
        btnGroup.appendChild(btn);
      });
