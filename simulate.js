@@ -5,7 +5,7 @@ const GRID_H = 9;
 const GOALS_TO_WIN = 3;
 const DIE_SIZE = 12;
 const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Left', 'Right', 'Right', 'Right'];
-const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
+const DIFF_GOAL = [2, 2, 1, 2, 2];    // difficulty at goal line (closest row)
 const DIFF_MID  = [11, 11, 12, 11, 11]; // difficulty at halfway line (row 4)
 
 function shuffle(array) {

@@ -12,7 +12,7 @@ const DECK_COMPOSITION = [
   'Left', 'Left', 'Left',
   'Right', 'Right', 'Right'
 ];
-const DIFF_GOAL = [3, 2, 1, 2, 3];    // difficulty at goal line (closest row)
+const DIFF_GOAL = [2, 2, 1, 2, 2];    // difficulty at goal line (closest row)
 const DIFF_MID  = [11, 11, 12, 11, 11]; // difficulty at halfway line (row 4)
 
 // ── State ──────────────────────────────────────────────────────────────────
