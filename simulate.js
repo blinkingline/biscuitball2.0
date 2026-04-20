@@ -1,12 +1,19 @@
 'use strict';
 
 const GRID_W = 5;
-const GRID_H = 9;
+const GRID_H = 11;
 const GOALS_TO_WIN = 3;
 const DIE_SIZE = 12;
 const DECK_COMPOSITION = ['Forward', 'Forward', 'Forward', 'Forward', 'Forward', 'Left', 'Left', 'Left', 'Right', 'Right', 'Right'];
-const DIFF_GOAL = [2, 2, 1, 2, 2];    // difficulty at goal line (closest row)
-const DIFF_MID  = [11, 11, 12, 11, 11]; // difficulty at halfway line (row 4)
+
+const ROW_DIFFS = [
+  [2, 2, 1, 2, 2],    // Row 0 (Goal)
+  [3, 2, 2, 2, 3],    // Row 1
+  [5, 3, 3, 3, 5],    // Row 2
+  [8, 5, 5, 5, 8],    // Row 3
+  [10, 8, 8, 8, 10],  // Row 4
+  [11, 11, 11, 11, 11] // Row 5 (Midfield)
+];
 
 function shuffle(array) {
   const a = [...array];
@@ -19,7 +26,7 @@ function shuffle(array) {
 
 function newState() {
   return {
-    ball: { x: 2, y: 4 },
+    ball: { x: 2, y: 5 },
     possession: 'player',
     scores: { player: 0, ai: 0 },
     playerHand: [],
@@ -57,22 +64,18 @@ function drawHand(state, side) {
 }
 
 function canShoot(state) {
-  return state.possession === 'player' ? state.ball.y <= 4 : state.ball.y >= 4;
+  return state.possession === 'player' ? state.ball.y <= 5 : state.ball.y >= 5;
 }
 
-function calcDiff(x, dist) {
-  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 4);
+function getDiff(state, x, y) {
+  const dist = state.possession === 'player' ? y : (10 - y);
+  if (dist < 0 || dist > 5) return null;
+  return ROW_DIFFS[dist][x];
 }
 
-function shotDifficulty(state) {
-  const { x, y } = state.ball;
-  const dist = state.possession === 'player' ? y : (8 - y);
-  return calcDiff(x, dist);
-}
-
-function moveBall(state, card) {
+function moveBall(state, card, distance = 1) {
   let { x, y } = state.ball;
-  if (card === 'Forward') y += state.possession === 'player' ? -1 : 1;
+  if (card === 'Forward') y += state.possession === 'player' ? -distance : distance;
   else if (card === 'Left') x -= 1;
   else if (card === 'Right') x += 1;
   return { x, y, oob: x < 0 || x >= GRID_W || y < 0 || y >= GRID_H };
@@ -106,7 +109,7 @@ function pickMove(state, side, isOffense) {
     if (isOffense) {
       if (card === 'Shoot') {
         if (canShoot(state)) {
-          const dist = side === 'player' ? y : (8 - y);
+          const dist = side === 'player' ? y : (10 - y);
           weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.1) * avoid('Shoot') * 4;
         } else weights.Shoot = 0;
       } else if (card === 'Forward') weights.Forward = avoid('Forward') * 5;
@@ -136,35 +139,37 @@ function runGame() {
     const defCardRaw = pickMove(state, defender, false);
     const defCard = defCardRaw === 'Block' ? 'Shoot' : defCardRaw;
 
-    // Track history
     state[`${attacker}CardHistory`][offCard]++;
-    state[`${defender}DefenseHistory`][defCard]++;
+    state[`${defender}DefenseHistory`][defCard];
 
     if (offCard === defCard) {
-      // Tackle / Block
       state.possession = defender;
       if (offCard === 'Shoot') {
         const kickRoll = rollDie();
-        const kickDist = Math.ceil(kickRoll / 6); // 1-2 spaces on d12
+        const kickDist = Math.ceil(kickRoll / 6); 
         const { x, y } = state.ball;
         state.ball.y = state.possession === 'player' ? Math.max(y - kickDist, 0) : Math.min(y + kickDist, GRID_H - 1);
+      } else if (offCard === 'Forward') {
+        const pos = moveBall(state, 'Forward', 1);
+        if (!pos.oob) state.ball = pos;
       }
     } else if (offCard === 'Shoot') {
-      const diff = shotDifficulty(state);
+      const diff = getDiff(state, state.ball.x, state.ball.y);
       const roll = rollDie();
       if (roll > diff) {
         state.scores[attacker]++;
         if (state.scores[attacker] >= GOALS_TO_WIN) {
           state.winner = attacker;
         } else {
-          state.ball = { x: 2, y: 4 };
+          state.ball = { x: 2, y: 5 };
           state.possession = defender;
         }
       } else {
         state.possession = defender;
       }
     } else {
-      const pos = moveBall(state, offCard);
+      const dist = offCard === 'Forward' ? 2 : 1;
+      const pos = moveBall(state, offCard, dist);
       if (pos.oob) {
         state.possession = defender;
       } else {
@@ -191,7 +196,7 @@ for (let i = 0; i < GAMES; i++) {
   results.turnCounts.push(game.turns);
 }
 
-console.log(`--- Simulation Results (Hand Size 3, 5x9 grid, d12, ${GAMES} games) ---`);
+console.log(`--- Simulation Results (5x11, Row-by-Row Diff, Fwd=2, Counter=2, d12, ${GAMES} games) ---`);
 console.log(`Player Wins (Started): ${results.playerWins} (${(results.playerWins/GAMES*100).toFixed(1)}%)`);
 console.log(`AI Wins (Opponent):    ${results.aiWins} (${(results.aiWins/GAMES*100).toFixed(1)}%)`);
 console.log(`Avg Game Length:       ${(results.totalTurns/GAMES).toFixed(1)} turns`);

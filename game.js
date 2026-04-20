@@ -3,7 +3,7 @@
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const GRID_W      = 5;
-const GRID_H      = 9;
+const GRID_H      = 11;
 const GOALS_TO_WIN = 3;
 const DIE_SIZE     = 12;
 const CARD_EMOJI  = { Forward: '⬆️', Left: '⬅️', Right: '➡️', Shoot: '🎯', Block: '🛡️' };
@@ -12,8 +12,15 @@ const DECK_COMPOSITION = [
   'Left', 'Left', 'Left',
   'Right', 'Right', 'Right'
 ];
-const DIFF_GOAL = [2, 2, 1, 2, 2];    // difficulty at goal line (closest row)
-const DIFF_MID  = [11, 11, 12, 11, 11]; // difficulty at halfway line (row 4)
+
+const ROW_DIFFS = [
+  [2, 2, 1, 2, 2],    // Row 0 (Goal)
+  [3, 2, 2, 2, 3],    // Row 1
+  [5, 3, 3, 3, 5],    // Row 2
+  [8, 5, 5, 5, 8],    // Row 3
+  [10, 8, 8, 8, 10],  // Row 4
+  [11, 11, 11, 11, 11] // Row 5 (Midfield)
+];
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +37,7 @@ function shuffle(array) {
 
 function newState() {
   const s = {
-    ball:       { x: 2, y: 4 },
+    ball:       { x: 2, y: 5 },
     possession: 'player',           // 'player' | 'ai'
     scores:     { player: 0, ai: 0 },
     phase:      'selectCard',        // 'selectCard' | 'aiThink' | 'playerDefend' | 'resolving' | 'gameOver'
@@ -86,30 +93,26 @@ function showScreen(id) {
 // ── Game helpers ───────────────────────────────────────────────────────────
 
 function canShoot() {
-  return state.possession === 'player' ? state.ball.y <= 4 : state.ball.y >= 4;
+  return state.possession === 'player' ? state.ball.y <= 5 : state.ball.y >= 5;
 }
 
-function calcDiff(x, dist) {
-  // dist: 0 = goal line, 4 = halfway line
-  return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 4);
+function getDifficulty(x, y) {
+  const dist = state.possession === 'player' ? y : (10 - y);
+  if (dist < 0 || dist > 5) return null;
+  return ROW_DIFFS[dist][x];
 }
 
 function shotDifficulty() {
-  const { x, y } = state.ball;
-  const dist = state.possession === 'player' ? y : (8 - y);
-  return calcDiff(x, dist);
+  return getDifficulty(state.ball.x, state.ball.y);
 }
 
 function cellDifficulty(x, y) {
-  if (state.possession === 'player' && y > 4) return null;
-  if (state.possession === 'ai'     && y < 4) return null;
-  const dist = state.possession === 'player' ? y : (8 - y);
-  return calcDiff(x, dist);
+  return getDifficulty(x, y);
 }
 
-function moveBall(card) {
+function moveBall(card, distance = 1) {
   let { x, y } = state.ball;
-  if      (card === 'Forward') y += state.possession === 'player' ? -1 : 1;
+  if      (card === 'Forward') y += state.possession === 'player' ? -distance : distance;
   else if (card === 'Left')    x -= 1;
   else if (card === 'Right')   x += 1;
   return { x, y, oob: x < 0 || x >= GRID_W || y < 0 || y >= GRID_H };
@@ -150,7 +153,7 @@ function aiPickOffense() {
   hand.forEach(card => {
     if (card === 'Shoot') {
       if (canShoot()) {
-        const dist = 8 - y;
+        const dist = 10 - y;
         weights.Shoot = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.1) * avoid('Shoot') * 4;
       } else {
         weights.Shoot = 0;
@@ -207,11 +210,19 @@ function resolveRound(offCard, defCard) {
 
   if (match) {
     switchPossession();
-    log('⚔️ Tackled!');
+    if (offCard === 'Forward') {
+       // Momentum counter-tackle: ball moves 1 space towards new owner's goal
+       const pos = moveBall('Forward', 1);
+       if (!pos.oob) state.ball = pos;
+       log('⚔️ Intercepted! AI counters.');
+    } else {
+       log('⚔️ Tackled!');
+    }
     return { type: 'tackled' };
   }
 
-  const pos = moveBall(offCard);
+  const dist = offCard === 'Forward' ? 2 : 1;
+  const pos = moveBall(offCard, dist);
   if (pos.oob) {
     switchPossession();
     log('Out of bounds!');
@@ -240,7 +251,7 @@ function afterResolve(result) {
         return;
       }
 
-      state.ball = { x: 2, y: 4 };
+      state.ball = { x: 2, y: 5 };
       switchPossession();
       log(state.possession === 'player' ? 'YOU have the biscuit.' : 'AI has the biscuit.');
     } else {
@@ -311,7 +322,7 @@ function buildGrid() {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.id = `c${x}${y}`;
-      if (y === 4)                       cell.classList.add('midfield');
+      if (y === 5)                       cell.classList.add('midfield');
       if (y === 0 || y === GRID_H - 1)  cell.classList.add('goal-row');
       field.appendChild(cell);
     }
