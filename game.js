@@ -20,6 +20,7 @@ function newState() {
     scores:     { player: 0, ai: 0 },
     phase:      'selectCard',        // 'selectCard' | 'aiThink' | 'playerDefend' | 'resolving' | 'gameOver'
     aiCard:     null,
+    playerCardHistory: { Forward: 0, Left: 0, Right: 0, Shoot: 0 },
     history:    ['Game started! YOU have the biscuit.'],
     winner:     null,
   };
@@ -74,18 +75,40 @@ function log(msg) { state.history.push(msg); }
 
 // ── AI ─────────────────────────────────────────────────────────────────────
 
+function weightedRandom(weights) {
+  const entries = Object.entries(weights).filter(([, w]) => w > 0);
+  let r = Math.random() * entries.reduce((sum, [, w]) => sum + w, 0);
+  for (const [key, w] of entries) {
+    r -= w;
+    if (r <= 0) return key;
+  }
+  return entries[entries.length - 1][0];
+}
+
 function aiPickOffense() {
-  if (canShoot() && Math.random() < 0.4) return 'Shoot';
-  const r = Math.random();
-  return r < 0.5 ? 'Forward' : r < 0.75 ? 'Left' : 'Right';
+  const { x, y } = state.ball;
+
+  if (canShoot()) {
+    const dist = 10 - y; // 0 = goal line, 4 = halfway
+    const shootProb = Math.max(0, 0.5 - dist * 0.1 - Math.abs(x - 2) * 0.08);
+    if (Math.random() < shootProb) return 'Shoot';
+  }
+
+  return weightedRandom({
+    Forward: 5,
+    Left:    x > 0 ? (x >= 3 ? 3 : 2) : 0,
+    Right:   x < 4 ? (x <= 1 ? 3 : 2) : 0,
+  });
 }
 
 function aiPickDefense() {
-  const r = Math.random();
-  if (r < 0.1)  return 'Forward';
-  if (r < 0.35) return 'Left';
-  if (r < 0.6)  return 'Right';
-  return 'Shoot';
+  const h = state.playerCardHistory;
+  return weightedRandom({
+    Forward: h.Forward + 1,
+    Left:    h.Left    + 1,
+    Right:   h.Right   + 1,
+    Shoot:   canShoot() ? h.Shoot + 1 : 0,
+  });
 }
 
 // ── Resolve ────────────────────────────────────────────────────────────────
@@ -165,6 +188,7 @@ function onPlayerOffense(card) {
   if (state.phase !== 'selectCard' || state.possession !== 'player') return;
   if (card === 'Shoot' && !canShoot()) return;
 
+  state.playerCardHistory[card]++;
   state.phase = 'resolving';
   render();
 
