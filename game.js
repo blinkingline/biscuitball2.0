@@ -202,8 +202,6 @@ function resolveRound(offCard, defCard) {
 
   if (match) {
     switchPossession();
-    const pos = moveBall(offCard);
-    if (!pos.oob) state.ball = pos;
     log('⚔️ Tackled!');
     return { type: 'tackled' };
   }
