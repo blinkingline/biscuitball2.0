@@ -460,3 +460,12 @@ html, body {
   #scoreboard { padding: 3px 16px; }
 }
 
+
+.block-btn {
+  border-color: #1e3048;
+  background: #0a151f;
+}
+.block-btn:not(:disabled):hover {
+  border-color: #4488ff;
+  background: #0f1a2a;
+}

@@ -17,10 +17,12 @@
     <div class="rules-box">
       <h3>Rules</h3>
       <ul>
-        <li>On <strong>offense</strong>, pick a card: <span class="c-fwd">Forward ⬆️</span>, <span class="c-lr">Left ⬅️</span>, <span class="c-lr">Right ➡️</span>, or <span class="c-shoot">Shoot 🎯</span></li>
-        <li>On <strong>defense</strong>, guess which card the attacker will play — a correct guess is a tackle!</li>
-        <li>A tackle gives the ball to the defender. <strong>Shoot</strong> is only available in the opponent's half</li>
-        <li>On a shot, roll 1–20. The number on the cell is the target you must beat</li>
+        <li>Each turn you draw <strong>2 movement cards</strong> from your deck.</li>
+        <li>On <strong>offense</strong>, you have 3 options: your 2 cards or <span class="c-shoot">Shoot 🎯</span>.</li>
+        <li>On <strong>defense</strong>, you have 3 options: guess their card or <span class="c-shoot">Block 🛡️</span>.</li>
+        <li>Deck: 4x <span class="c-fwd">Forward ⬆️</span>, 2x <span class="c-lr">Left ⬅️</span>, 2x <span class="c-lr">Right ➡️</span>.</li>
+        <li><strong>Shoot/Block</strong> is only available in the opponent's half.</li>
+        <li>A correct guess is a tackle! Tackle or OOB switches possession.</li>
         <li>First to <strong>5 goals</strong> wins!</li>
       </ul>
     </div>
@@ -57,21 +59,8 @@
   <div id="log-area"></div>
 
   <div id="controls">
-    <div id="btns-offense" class="btn-group hidden">
-      <button class="card-btn" data-card="Forward">⬆️<span>Fwd</span></button>
-      <button class="card-btn" data-card="Left">⬅️<span>Left</span></button>
-      <button class="card-btn" data-card="Right">➡️<span>Right</span></button>
-      <button class="card-btn shoot-btn" data-card="Shoot">🎯<span>Shoot</span></button>
-    </div>
-    <div id="btns-defense" class="btn-group hidden">
-      <div class="def-prompt">Guess their play:</div>
-      <div class="def-btns">
-        <button class="def-btn" data-card="Forward">⬆️<span>Fwd</span></button>
-        <button class="def-btn" data-card="Left">⬅️<span>Left</span></button>
-        <button class="def-btn" data-card="Right">➡️<span>Right</span></button>
-        <button class="def-btn" data-card="Shoot">🎯<span>Shoot</span></button>
-      </div>
-    </div>
+    <div id="btns-offense" class="btn-group hidden"></div>
+    <div id="btns-defense" class="btn-group hidden"></div>
   </div>
 
 </div>
