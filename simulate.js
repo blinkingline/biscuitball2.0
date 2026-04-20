@@ -43,7 +43,7 @@ function drawHand(state, side) {
   const sideHand = `${side}Hand`;
   state[sideDiscard].push(...state[sideHand]);
   state[sideHand] = [];
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < 3; i++) {
     if (state[sideDeck].length === 0) {
       if (state[sideDiscard].length === 0) {
         state[sideDeck] = shuffle(DECK_COMPOSITION);
@@ -61,7 +61,6 @@ function canShoot(state) {
 }
 
 function calcDiff(x, dist) {
-  // dist: 0 = goal line, 4 = halfway line
   return Math.round(DIFF_GOAL[x] + (DIFF_MID[x] - DIFF_GOAL[x]) * dist / 4);
 }
 
@@ -192,7 +191,7 @@ for (let i = 0; i < GAMES; i++) {
   results.turnCounts.push(game.turns);
 }
 
-console.log(`--- Simulation Results (5x9 grid, d12, ${GAMES} games) ---`);
+console.log(`--- Simulation Results (Hand Size 3, 5x9 grid, d12, ${GAMES} games) ---`);
 console.log(`Player Wins (Started): ${results.playerWins} (${(results.playerWins/GAMES*100).toFixed(1)}%)`);
 console.log(`AI Wins (Opponent):    ${results.aiWins} (${(results.aiWins/GAMES*100).toFixed(1)}%)`);
 console.log(`Avg Game Length:       ${(results.totalTurns/GAMES).toFixed(1)} turns`);

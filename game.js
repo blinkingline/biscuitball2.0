@@ -58,8 +58,8 @@ function drawHand(side) {
   state[sideDiscard].push(...state[sideHand]);
   state[sideHand] = [];
 
-  // Draw 2 cards
-  for (let i = 0; i < 2; i++) {
+  // Draw 3 cards
+  for (let i = 0; i < 3; i++) {
     if (state[sideDeck].length === 0) {
       if (state[sideDiscard].length === 0) {
          state[sideDeck] = shuffle(DECK_COMPOSITION);
